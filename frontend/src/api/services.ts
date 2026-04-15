@@ -1,23 +1,19 @@
 import { apiClient } from './client';
 
-// ── Auth API ─────────────────────────────────────────────────
+// ── Auth API ──────────────────────────────────────────────────────────────────
 export const authApi = {
   login: (email: string, password: string) =>
     apiClient.post('/auth/login', { email, password }),
-
   logout: (refreshToken: string) =>
     apiClient.post('/auth/logout', { refreshToken }),
-
   me: () => apiClient.get('/auth/me'),
-
   refresh: (refreshToken: string) =>
     apiClient.post('/auth/refresh', { refreshToken }),
-
   changePassword: (currentPassword: string, newPassword: string) =>
     apiClient.post('/auth/change-password', { currentPassword, newPassword }),
 };
 
-// ── Records API ───────────────────────────────────────────────
+// ── Records API ───────────────────────────────────────────────────────────────
 export interface RecordFilters {
   page?: number;
   limit?: number;
@@ -36,23 +32,17 @@ export interface RecordFilters {
 export const recordsApi = {
   list: (filters: RecordFilters = {}) =>
     apiClient.get('/records', { params: filters }),
-
   get: (id: string) => apiClient.get(`/records/${id}`),
-
   create: (data: object) => apiClient.post('/records', data),
-
   update: (id: string, data: object) => apiClient.patch(`/records/${id}`, data),
-
   addComment: (id: string, text: string, internalFlag = false) =>
     apiClient.post(`/records/${id}/comment`, { text, internalFlag }),
-
   addTimeEntry: (id: string, data: { hours: number; description: string; workDate: string }) =>
     apiClient.post(`/records/${id}/time-entry`, data),
-
   getHistory: (id: string) => apiClient.get(`/records/${id}/history`),
 };
 
-// ── Agents API ────────────────────────────────────────────────
+// ── Agents API ────────────────────────────────────────────────────────────────
 export const agentsApi = {
   list:     (params?: object)           => apiClient.get('/agents', { params }),
   get:      (id: string)                => apiClient.get(`/agents/${id}`),
@@ -63,7 +53,7 @@ export const agentsApi = {
   linkUser: (data: object)              => apiClient.post('/agents/link-user', data),
 };
 
-// ── Users API ─────────────────────────────────────────────────
+// ── Users API ─────────────────────────────────────────────────────────────────
 export const usersApi = {
   list: (params?: object) => apiClient.get('/users', { params }),
   get: (id: string) => apiClient.get(`/users/${id}`),
@@ -72,7 +62,7 @@ export const usersApi = {
   deactivate: (id: string) => apiClient.delete(`/users/${id}`),
 };
 
-// ── Customers API ─────────────────────────────────────────────
+// ── Customers API ─────────────────────────────────────────────────────────────
 export const customersApi = {
   list: (params?: object) => apiClient.get('/customers', { params }),
   get: (id: string) => apiClient.get(`/customers/${id}`),
@@ -80,7 +70,7 @@ export const customersApi = {
   update: (id: string, data: object) => apiClient.patch(`/customers/${id}`, data),
 };
 
-// ── Contracts API ─────────────────────────────────────────────
+// ── Contracts API ─────────────────────────────────────────────────────────────
 export const supportTypesApi = {
   list:   (params?: object) => apiClient.get('/support-types', { params }),
   get:    (id: string)      => apiClient.get(`/support-types/${id}`),
@@ -113,7 +103,7 @@ export const contractsApi = {
   changelog: (id: string) => apiClient.get(`/contracts/${id}/changelog`),
 };
 
-// ── CMDB API ──────────────────────────────────────────────────
+// ── CMDB API ──────────────────────────────────────────────────────────────────
 export const cmdbApi = {
   list: (params?: object) => apiClient.get('/cmdb', { params }),
   create: (data: object) => apiClient.post('/cmdb', data),
@@ -122,18 +112,16 @@ export const cmdbApi = {
   seed: () => apiClient.post('/cmdb/seed'),
 };
 
-// ── Reports API ───────────────────────────────────────────────
+// ── Reports API ───────────────────────────────────────────────────────────────
 export const reportsApi = {
   timeEntries: (params?: object) => apiClient.get('/reports/time-entries', { params }),
   resolutionTimes: (params?: object) => apiClient.get('/reports/resolution-times', { params }),
 };
 
-// ── Audit API ─────────────────────────────────────────────────
+// ── Audit API ─────────────────────────────────────────────────────────────────
 export const auditApi = {
   list: (params?: object) => apiClient.get('/audit', { params }),
 };
-
-
 
 export const shiftsApi = {
   list: (params?: object) => apiClient.get('/shifts', { params }),
@@ -190,7 +178,7 @@ export const assignmentRulesApi = {
   recommend: (data: object) => apiClient.post('/assignment-rules/recommend', data),
 };
 
-// ── Dashboard API ─────────────────────────────────────────────
+// ── Dashboard API ─────────────────────────────────────────────────────────────
 export const dashboardApi = {
   overview: () => apiClient.get('/dashboard'),
   pm: () => apiClient.get('/dashboard/pm'),
@@ -199,4 +187,18 @@ export const dashboardApi = {
   user: () => apiClient.get('/dashboard/user'),
   slaReport: (from?: string, to?: string) =>
     apiClient.get('/dashboard/sla-report', { params: { from, to } }),
+};
+
+// ── Analytics API ─────────────────────────────────────────────────────────────
+export const analyticsApi = {
+  classification: (days?: number) =>
+    apiClient.get('/analytics/classification', { params: { days } }),
+  patterns: (days?: number, threshold?: number) =>
+    apiClient.get('/analytics/patterns', { params: { days, threshold } }),
+  rootCause: (days?: number) =>
+    apiClient.get('/analytics/root-cause', { params: { days } }),
+  knowledgeGaps: (days?: number) =>
+    apiClient.get('/analytics/knowledge-gaps', { params: { days } }),
+  similar: (recordId: string) =>
+    apiClient.get(`/analytics/similar/${recordId}`),
 };

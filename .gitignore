@@ -39,12 +39,3 @@ coverage/
 
 # TypeScript
 *.tsbuildinfo
-# Lock to project folder only - ignore file types from parent folders
-*.zip
-*.xlsx
-*.xlsm
-*.pptx
-*.pdf
-*.docx
-*.exe
-~$*

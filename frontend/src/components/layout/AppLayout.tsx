@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Ticket, Users, UserCog, Building2, FileText, Tag,
   Server, Shield, ShieldCheck, LogOut, Bell, ChevronDown, AlertTriangle,
   Plus, User, Clock, Calendar, Mail, ChevronRight, Settings,
-  Target, Layers, Zap, Check
+  Target, Layers, Zap, Check, BarChart2
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store';
 import { authApi } from '../../api/services';
@@ -72,12 +72,13 @@ const NAV_STRUCTURE = [
     icon: Calendar,
     roles: ['COMPANY_ADMIN', 'PROJECT_MANAGER', 'AGENT'],
   },
-  // Reporting dropdown
+  // Intelligence + Reporting dropdown
   {
-    label: 'Reporting',
-    icon: AlertTriangle,
-    roles: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER'],
+    label: 'Intelligence',
+    icon: BarChart2,
+    roles: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER', 'AGENT'],
     children: [
+      { to: '/analytics/classification', icon: BarChart2, label: 'Incident Intelligence', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER', 'AGENT'] },
       { to: '/sla-report', icon: AlertTriangle, label: 'SLA Reports', roles: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER'] },
     ],
   },

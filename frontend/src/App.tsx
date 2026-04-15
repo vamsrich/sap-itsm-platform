@@ -8,36 +8,37 @@ import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 // Lazy-loaded pages
-const LoginPage          = lazy(() => import('./pages/LoginPage'));
-const DashboardPage      = lazy(() => import('./pages/DashboardPage'));
-const RecordsPage        = lazy(() => import('./pages/RecordsPage'));
-const RecordDetailPage   = lazy(() => import('./pages/RecordDetailPage'));
-const NewRecordPage      = lazy(() => import('./pages/NewRecordPage'));
-const UsersPage          = lazy(() => import('./pages/UsersPage'));
-const AgentsPage         = lazy(() => import('./pages/AgentsPage'));
-const ProfilePage        = lazy(() => import('./pages/ProfilePage'));
+const LoginPage           = lazy(() => import('./pages/LoginPage'));
+const DashboardPage       = lazy(() => import('./pages/DashboardPage'));
+const RecordsPage         = lazy(() => import('./pages/RecordsPage'));
+const RecordDetailPage    = lazy(() => import('./pages/RecordDetailPage'));
+const NewRecordPage       = lazy(() => import('./pages/NewRecordPage'));
+const UsersPage           = lazy(() => import('./pages/UsersPage'));
+const AgentsPage          = lazy(() => import('./pages/AgentsPage'));
+const ProfilePage         = lazy(() => import('./pages/ProfilePage'));
 const SLAPolicyMasterPage = lazy(() => import('./pages/SLAPolicyMasterPage'));
-const SLAReportPage      = lazy(() => import('./pages/SLAReportPage'));
-const CMDBPage           = lazy(() => import('./pages/CMDBPage'));
-const AuditPage          = lazy(() => import('./pages/AuditPage'));
-const ShiftsPage         = lazy(() => import('./pages/ShiftsPage'));
-const HolidaysPage       = lazy(() => import('./pages/HolidaysPage'));
-const NotificationsPage  = lazy(() => import('./pages/NotificationsPage'));
-const SAPModulesPage     = lazy(() => import('./pages/SAPModulesPage'));
+const SLAReportPage       = lazy(() => import('./pages/SLAReportPage'));
+const CMDBPage            = lazy(() => import('./pages/CMDBPage'));
+const AuditPage           = lazy(() => import('./pages/AuditPage'));
+const ShiftsPage          = lazy(() => import('./pages/ShiftsPage'));
+const HolidaysPage        = lazy(() => import('./pages/HolidaysPage'));
+const NotificationsPage   = lazy(() => import('./pages/NotificationsPage'));
+const SAPModulesPage      = lazy(() => import('./pages/SAPModulesPage'));
 const AssignmentRulesPage = lazy(() => import('./pages/AssignmentRulesPage'));
-const AppLayout          = lazy(() => import('./components/layout/AppLayout'));
+const ClassificationPage  = lazy(() => import('./pages/ClassificationPage'));
+const AppLayout           = lazy(() => import('./components/layout/AppLayout'));
 
-// Customers — list + form + detail
+// Customers
 const CustomersPage      = lazy(() => import('./pages/CustomersPage'));
 const CustomerFormPage   = lazy(() => import('./pages/CustomerFormPage'));
 const CustomerDetailPage = lazy(() => import('./pages/CustomerDetailPage'));
 
-// Contracts — list + create form + read-only detail
-const ContractsListPage  = lazy(() => import('./pages/ContractsListPage'));
-const ContractFormPage   = lazy(() => import('./pages/ContractFormPage'));
+// Contracts
+const ContractsListPage      = lazy(() => import('./pages/ContractsListPage'));
+const ContractFormPage       = lazy(() => import('./pages/ContractFormPage'));
 const ContractDetailPage     = lazy(() => import('./pages/ContractDetailPage'));
-const ContractTypeMasterPage  = lazy(() => import('./pages/ContractTypeMasterPage'));
-const SupportTypeMasterPage   = lazy(() => import('./pages/SupportTypeMasterPage'));
+const ContractTypeMasterPage = lazy(() => import('./pages/ContractTypeMasterPage'));
+const SupportTypeMasterPage  = lazy(() => import('./pages/SupportTypeMasterPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -83,7 +84,14 @@ export default function App() {
                     <SLAReportPage />
                   </ProtectedRoute>
                 } />
-                <Route path="/profile"     element={<ProfilePage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+
+                {/* Intelligence */}
+                <Route path="/analytics/classification" element={
+                  <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER','AGENT']}>
+                    <ClassificationPage />
+                  </ProtectedRoute>
+                } />
 
                 {/* Users */}
                 <Route path="/users" element={
@@ -99,58 +107,49 @@ export default function App() {
                   </ProtectedRoute>
                 } />
 
-                {/* Customers — list */}
+                {/* Customers */}
                 <Route path="/customers" element={
                   <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER']}>
                     <CustomersPage />
                   </ProtectedRoute>
                 } />
-                {/* Customers — create (Super Admin only) */}
                 <Route path="/customers/new" element={
                   <ProtectedRoute roles={['SUPER_ADMIN']}>
                     <CustomerFormPage />
                   </ProtectedRoute>
                 } />
-                {/* Customers — edit (Super Admin only) */}
                 <Route path="/customers/:id/edit" element={
                   <ProtectedRoute roles={['SUPER_ADMIN']}>
                     <CustomerFormPage />
                   </ProtectedRoute>
                 } />
-                {/* Customers — detail view (Company Admin, PM) */}
                 <Route path="/customers/:id" element={
                   <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER']}>
                     <CustomerDetailPage />
                   </ProtectedRoute>
                 } />
 
-                {/* Contracts — list */}
+                {/* Contracts */}
                 <Route path="/contracts" element={
                   <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER']}>
                     <ContractsListPage />
                   </ProtectedRoute>
                 } />
-                {/* Support Type Master */}
                 <Route path="/support-types" element={
                   <ProtectedRoute roles={['SUPER_ADMIN']}>
                     <SupportTypeMasterPage />
                   </ProtectedRoute>
                 } />
-
-                {/* Contract Type Master */}
                 <Route path="/contract-types" element={
                   <ProtectedRoute roles={['SUPER_ADMIN']}>
                     <ContractTypeMasterPage />
                   </ProtectedRoute>
                 } />
-
-                {/* Contracts — create (Super Admin only) */}
                 <Route path="/contracts/new" element={
                   <ProtectedRoute roles={['SUPER_ADMIN']}>
                     <ContractFormPage />
                   </ProtectedRoute>
                 } />
-                {/* Contracts — read-only detail (both Super Admin and Company Admin) */}
                 <Route path="/contracts/:id" element={
                   <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER']}>
                     <ContractDetailPage />
@@ -162,7 +161,7 @@ export default function App() {
                   </ProtectedRoute>
                 } />
 
-                {/* CMDB & Audit — Super Admin only */}
+                {/* CMDB & Audit */}
                 <Route path="/cmdb" element={
                   <ProtectedRoute roles={['SUPER_ADMIN']}>
                     <CMDBPage />
@@ -174,7 +173,7 @@ export default function App() {
                   </ProtectedRoute>
                 } />
 
-                {/* Config — Super Admin only */}
+                {/* Config */}
                 <Route path="/shifts" element={
                   <ProtectedRoute roles={['SUPER_ADMIN']}>
                     <ShiftsPage />
@@ -186,7 +185,7 @@ export default function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/notifications" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN', 'COMPANY_ADMIN']}>
+                  <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN']}>
                     <NotificationsPage />
                   </ProtectedRoute>
                 } />
@@ -196,7 +195,7 @@ export default function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/assignment-rules" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN', 'PROJECT_MANAGER']}>
+                  <ProtectedRoute roles={['SUPER_ADMIN','PROJECT_MANAGER']}>
                     <AssignmentRulesPage />
                   </ProtectedRoute>
                 } />

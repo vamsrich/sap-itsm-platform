@@ -26,10 +26,11 @@ import notificationRuleRoutes from './services/notifications/notification.routes
 import notificationInboxRoutes from './services/notifications/inbox.routes';
 import sapModuleRoutes from './api/routes/sapModule.routes';
 import assignmentRuleRoutes from './api/routes/assignmentRule.routes';
+import analyticsRoutes from './api/routes/analytics.routes';
 
 const app = express();
 
-// ── Security ─────────────────────────────────────────────────
+// ── Security ──────────────────────────────────────────────────────────────────
 app.use(helmet({
   contentSecurityPolicy: true,
   crossOriginEmbedderPolicy: false,
@@ -51,7 +52,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-ID'],
 }));
 
-// ── Rate Limiting ─────────────────────────────────────────────
+// ── Rate Limiting ─────────────────────────────────────────────────────────────
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 500,
@@ -66,29 +67,29 @@ app.use('/api/auth/login', rateLimit({
   message: { error: 'Too many login attempts. Please wait 15 minutes.' },
 }));
 
-// ── Body Parsing ──────────────────────────────────────────────
+// ── Body Parsing ──────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(compression());
 
-// ── Logging ───────────────────────────────────────────────────
+// ── Logging ───────────────────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
 app.use(requestLogger);
 
-// ── Health Check ──────────────────────────────────────────────
+// ── Health Check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.json({
     status: 'healthy',
     service: 'sap-itsm-backend',
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || '1.0.0',
-    build: 'v34-smart-assign-20260306',
+    build: 'v35-analytics-20260415',
   });
 });
 
-// ── API Routes ────────────────────────────────────────────────
+// ── API Routes ────────────────────────────────────────────────────────────────
 const API = '/api/v1';
 app.use(`${API}/auth`, authRoutes);
 app.use(`${API}/users`, userRoutes);
@@ -108,8 +109,9 @@ app.use(`${API}/notification-rules`, notificationRuleRoutes);
 app.use(`${API}/notifications/inbox`, notificationInboxRoutes);
 app.use(`${API}/sap-modules`, sapModuleRoutes);
 app.use(`${API}/assignment-rules`, assignmentRuleRoutes);
+app.use(`${API}/analytics`, analyticsRoutes);
 
-// ── Admin Endpoints (before error handlers!) ──────────────────
+// ── Admin Endpoints (before error handlers!) ──────────────────────────────────
 app.post('/admin/fix-record-customers', async (_req, res) => {
   try {
     const { prisma } = await import('./config/database');
@@ -126,7 +128,6 @@ app.post('/admin/fix-record-customers', async (_req, res) => {
   }
 });
 
-// Seed notification rules for all tenants
 app.post('/admin/seed-notification-rules', async (_req, res) => {
   try {
     const { prisma } = await import('./config/database');
@@ -157,7 +158,7 @@ app.post('/admin/seed', async (_req, res) => {
   }
 });
 
-// ── Error Handling (must be LAST) ─────────────────────────────
+// ── Error Handling (must be LAST) ─────────────────────────────────────────────
 app.use(notFoundHandler);
 app.use(errorHandler);
 
