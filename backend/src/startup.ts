@@ -34,6 +34,17 @@ async function startup() {
       console.warn('Seed warning (may already be seeded):', e);
     }
   }
+
+  // AMS_SEED_ON_BOOT=true — seed GlobalManufacturing AG AMS data
+  if (process.env.AMS_SEED_ON_BOOT === 'true') {
+    console.log('\n🌱 AMS_SEED_ON_BOOT=true — loading GlobalManufacturing AG data...');
+    try {
+      execSync('npx ts-node src/ams-seed.ts', { stdio: 'inherit' });
+      console.log('AMS seed complete.');
+    } catch (e) {
+      console.error('AMS seed failed:', e);
+    }
+  }
 }
 
 startup();
