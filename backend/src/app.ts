@@ -158,6 +158,17 @@ app.post('/admin/seed', async (_req, res) => {
   }
 });
 
+
+app.post('/admin/ams-seed', async (_req, res) => {
+  try {
+    const { seedAmsData } = await import('../prisma/ams-seed');
+    await seedAmsData();
+    res.json({ success: true, message: 'AMS seed complete — GlobalManufacturing AG data loaded with 82 realistic tickets across FICO, MM, SD, PP' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Error Handling (must be LAST) ─────────────────────────────────────────────
 app.use(notFoundHandler);
 app.use(errorHandler);
