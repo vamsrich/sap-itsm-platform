@@ -639,7 +639,7 @@ async function main() {
     await prisma.comment.create({
       data: {
         recordId: ticket.id,
-        authorId: ficoAgent.id,
+        authorId: ficoAgentUser.id,
         text: 'Initial investigation complete. Root cause identified. Working on fix — ETA 4 hours.',
         internalFlag: true,
         createdAt: new Date(ticket.createdAt.getTime() + 3600000),
