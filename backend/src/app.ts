@@ -85,7 +85,7 @@ app.get('/health', (_req, res) => {
     service: 'sap-itsm-backend',
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || '1.0.0',
-    build: 'v35-ams-seed-20260415',
+    build: 'v35-analytics-20260415',
   });
 });
 
@@ -161,7 +161,7 @@ app.post('/admin/seed', async (_req, res) => {
 
 app.post('/admin/ams-seed', async (_req, res) => {
   try {
-    const { seedAmsData } = await import('../prisma/ams-seed');
+    const { seedAmsData } = await import('./ams-seed');
     await seedAmsData();
     res.json({ success: true, message: 'AMS seed complete — GlobalManufacturing AG data loaded with 82 realistic tickets across FICO, MM, SD, PP' });
   } catch (err: any) {
