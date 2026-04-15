@@ -634,7 +634,6 @@ async function main() {
   for (const ticket of openTickets) {
     await prisma.comment.create({
       data: {
-        tenantId: tenant.id,
         recordId: ticket.id,
         authorId: ficoAgent.id,
         text: 'Initial investigation complete. Root cause identified. Working on fix — ETA 4 hours.',
@@ -682,3 +681,5 @@ async function main() {
 main()
   .then(() => prisma.$disconnect())
   .catch(e => { console.error('❌ Seed failed:', e); prisma.$disconnect(); process.exit(1); });
+
+export { main as seedAmsData };
