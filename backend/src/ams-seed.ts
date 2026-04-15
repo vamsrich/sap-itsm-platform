@@ -72,19 +72,20 @@ async function main() {
 
   // ── 2. Clear existing tickets only (keep users/agents if exist) ──
   // Delete in safe order
-  const existingRecords = await prisma.iTSMRecord.findMany({ where: { tenantId: tenant.id }, select: { id: true } });
-  const recordIds = existingRecords.map(r => r.id);
-  if (recordIds.length > 0) {
-    const slaIds = (await prisma.sLATracking.findMany({ where: { recordId: { in: recordIds } }, select: { id: true } })).map(s => s.id);
-    if (slaIds.length > 0) await prisma.sLAPauseHistory.deleteMany({ where: { slaId: { in: slaIds } } });
-    await prisma.sLATracking.deleteMany({ where: { recordId: { in: recordIds } } });
-    await prisma.timeEntry.deleteMany({ where: { recordId: { in: recordIds } } });
-    await prisma.comment.deleteMany({ where: { recordId: { in: recordIds } } });
-    await prisma.notification.deleteMany({ where: { recordId: { in: recordIds } } });
-    await prisma.emailLog.deleteMany({ where: { recordId: { in: recordIds } } });
-  }
+// Delete in safe dependency order
+  await prisma.sLAPauseHistory.deleteMany({});
+  await prisma.sLATracking.deleteMany({ where: { record: { tenantId: tenant.id } } });
+  await prisma.timeEntry.deleteMany({ where: { record: { tenantId: tenant.id } } });
+  await prisma.comment.deleteMany({ where: { record: { tenantId: tenant.id } } });
+  await prisma.notification.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.emailLog.deleteMany({ where: { record: { tenantId: tenant.id } } });
   await prisma.auditLog.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.iTSMRecord.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.contractShift.deleteMany({ where: { contract: { customer: { tenantId: tenant.id } } } });
+  await prisma.contractHolidayCalendar.deleteMany({ where: { contract: { customer: { tenantId: tenant.id } } } });
+  await prisma.contract.deleteMany({ where: { customer: { tenantId: tenant.id } } });
+  await prisma.customerAgent.deleteMany({ where: { customer: { tenantId: tenant.id } } });
+  await prisma.customer.deleteMany({ where: { tenantId: tenant.id } });
   console.log('✅ Cleared existing ticket data');
 
   // ── 3. Users ──────────────────────────────────────────────
