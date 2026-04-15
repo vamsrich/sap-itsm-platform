@@ -99,6 +99,18 @@ async function bootstrap() {
       }
     }
 
+    // AMS_SEED_ON_BOOT — load GlobalManufacturing AG AMS data
+    if (process.env.AMS_SEED_ON_BOOT === 'true') {
+      logger.info('🌱 AMS_SEED_ON_BOOT=true — loading GlobalManufacturing AG AMS data...');
+      try {
+        const { seedAmsData } = await import('./ams-seed');
+        await seedAmsData();
+        logger.info('✅ AMS seed complete');
+      } catch (e: any) {
+        logger.error('❌ AMS seed failed:', e?.message || e);
+      }
+    }
+
     await redis.ping();
     logger.info('✅ Redis connected');
 
