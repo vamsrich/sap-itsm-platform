@@ -85,7 +85,7 @@ app.get('/health', (_req, res) => {
     service: 'sap-itsm-backend',
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || '1.0.0',
-    build: 'v35-analytics-20260415',
+    build: 'v35-ams-20260415b',
   });
 });
 
