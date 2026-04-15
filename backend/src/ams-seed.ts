@@ -85,6 +85,9 @@ async function main() {
   await prisma.contractHolidayCalendar.deleteMany({ where: { contract: { customer: { tenantId: tenant.id } } } });
   await prisma.contract.deleteMany({ where: { customer: { tenantId: tenant.id } } });
   await prisma.customerAgent.deleteMany({ where: { customer: { tenantId: tenant.id } } });
+  await prisma.user.updateMany({ where: { tenantId: tenant.id, customerId: { not: null } }, 
+    data: { customerId: null } 
+  });
   await prisma.customer.deleteMany({ where: { tenantId: tenant.id } });
   console.log('✅ Cleared existing ticket data');
 
