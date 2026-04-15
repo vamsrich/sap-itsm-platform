@@ -71,14 +71,20 @@ async function main() {
   console.log('✅ Tenant:', tenant.name);
 
   // ── 2. Clear existing tickets only (keep users/agents if exist) ──
-  await prisma.sLAPauseHistory.deleteMany({ where: { record: { tenantId: tenant.id } } });
-  await prisma.sLATracking.deleteMany({ where: { record: { tenantId: tenant.id } } });
-  await prisma.timeEntry.deleteMany({ where: { tenantId: tenant.id } });
-  await prisma.comment.deleteMany({ where: { tenantId: tenant.id } });
+  // Delete in safe order
+  const existingRecords = await prisma.iTSMRecord.findMany({ where: { tenantId: tenant.id }, select: { id: true } });
+  const recordIds = existingRecords.map(r => r.id);
+  if (recordIds.length > 0) {
+    const slaIds = (await prisma.sLATracking.findMany({ where: { recordId: { in: recordIds } }, select: { id: true } })).map(s => s.id);
+    if (slaIds.length > 0) await prisma.sLAPauseHistory.deleteMany({ where: { slaId: { in: slaIds } } });
+    await prisma.sLATracking.deleteMany({ where: { recordId: { in: recordIds } } });
+    await prisma.timeEntry.deleteMany({ where: { recordId: { in: recordIds } } });
+    await prisma.comment.deleteMany({ where: { recordId: { in: recordIds } } });
+    await prisma.notification.deleteMany({ where: { recordId: { in: recordIds } } });
+    await prisma.emailLog.deleteMany({ where: { recordId: { in: recordIds } } });
+  }
   await prisma.auditLog.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.iTSMRecord.deleteMany({ where: { tenantId: tenant.id } });
-  await prisma.notification.deleteMany({ where: { tenantId: tenant.id } });
-  await prisma.emailLog.deleteMany({ where: { tenantId: tenant.id } });
   console.log('✅ Cleared existing ticket data');
 
   // ── 3. Users ──────────────────────────────────────────────
@@ -173,7 +179,7 @@ async function main() {
     update: {},
     create: {
       userId: pmUser.id, specialization: 'SAP Project Management',
-      level: 'L4', timezone: 'Asia/Kolkata', maxConcurrent: 0,
+      level: 'SPECIALIST', timezone: 'Asia/Kolkata', maxConcurrent: 0,
       status: 'AVAILABLE', agentType: 'PROJECT_MANAGER',
     },
   });
@@ -259,52 +265,52 @@ async function main() {
 
   // Sub-modules
   const ficoGL = await prisma.sAPSubModuleMaster.upsert({
-    where: { moduleId_code: { moduleId: ficoModule.id, code: 'FICO-GL' } },
-    update: {}, create: { moduleId: ficoModule.id, code: 'FICO-GL', name: 'General Ledger', isActive: true },
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-GL' } },
+    update: {}, create: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-GL', name: 'General Ledger', isActive: true },
   });
   const ficoAP = await prisma.sAPSubModuleMaster.upsert({
-    where: { moduleId_code: { moduleId: ficoModule.id, code: 'FICO-AP' } },
-    update: {}, create: { moduleId: ficoModule.id, code: 'FICO-AP', name: 'Accounts Payable', isActive: true },
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-AP' } },
+    update: {}, create: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-AP', name: 'Accounts Payable', isActive: true },
   });
   const ficoAR = await prisma.sAPSubModuleMaster.upsert({
-    where: { moduleId_code: { moduleId: ficoModule.id, code: 'FICO-AR' } },
-    update: {}, create: { moduleId: ficoModule.id, code: 'FICO-AR', name: 'Accounts Receivable', isActive: true },
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-AR' } },
+    update: {}, create: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-AR', name: 'Accounts Receivable', isActive: true },
   });
   const ficoCO = await prisma.sAPSubModuleMaster.upsert({
-    where: { moduleId_code: { moduleId: ficoModule.id, code: 'FICO-CO' } },
-    update: {}, create: { moduleId: ficoModule.id, code: 'FICO-CO', name: 'Controlling / Cost Center', isActive: true },
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-CO' } },
+    update: {}, create: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-CO', name: 'Controlling / Cost Center', isActive: true },
   });
   const mmPR = await prisma.sAPSubModuleMaster.upsert({
-    where: { moduleId_code: { moduleId: mmModule.id, code: 'MM-PR' } },
-    update: {}, create: { moduleId: mmModule.id, code: 'MM-PR', name: 'Procurement / Purchase Orders', isActive: true },
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: mmModule.id, code: 'MM-PR' } },
+    update: {}, create: { tenantId: tenant.id, moduleId: mmModule.id, code: 'MM-PR', name: 'Procurement / Purchase Orders', isActive: true },
   });
   const mmGR = await prisma.sAPSubModuleMaster.upsert({
-    where: { moduleId_code: { moduleId: mmModule.id, code: 'MM-GR' } },
-    update: {}, create: { moduleId: mmModule.id, code: 'MM-GR', name: 'Goods Receipt / Goods Issue', isActive: true },
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: mmModule.id, code: 'MM-GR' } },
+    update: {}, create: { tenantId: tenant.id, moduleId: mmModule.id, code: 'MM-GR', name: 'Goods Receipt / Goods Issue', isActive: true },
   });
   const mmIM = await prisma.sAPSubModuleMaster.upsert({
-    where: { moduleId_code: { moduleId: mmModule.id, code: 'MM-IM' } },
-    update: {}, create: { moduleId: mmModule.id, code: 'MM-IM', name: 'Inventory Management', isActive: true },
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: mmModule.id, code: 'MM-IM' } },
+    update: {}, create: { tenantId: tenant.id, moduleId: mmModule.id, code: 'MM-IM', name: 'Inventory Management', isActive: true },
   });
   const sdOM = await prisma.sAPSubModuleMaster.upsert({
-    where: { moduleId_code: { moduleId: sdModule.id, code: 'SD-OM' } },
-    update: {}, create: { moduleId: sdModule.id, code: 'SD-OM', name: 'Order Management', isActive: true },
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: sdModule.id, code: 'SD-OM' } },
+    update: {}, create: { tenantId: tenant.id, moduleId: sdModule.id, code: 'SD-OM', name: 'Order Management', isActive: true },
   });
   const sdBI = await prisma.sAPSubModuleMaster.upsert({
-    where: { moduleId_code: { moduleId: sdModule.id, code: 'SD-BI' } },
-    update: {}, create: { moduleId: sdModule.id, code: 'SD-BI', name: 'Billing & Invoicing', isActive: true },
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: sdModule.id, code: 'SD-BI' } },
+    update: {}, create: { tenantId: tenant.id, moduleId: sdModule.id, code: 'SD-BI', name: 'Billing & Invoicing', isActive: true },
   });
   const sdPC = await prisma.sAPSubModuleMaster.upsert({
-    where: { moduleId_code: { moduleId: sdModule.id, code: 'SD-PC' } },
-    update: {}, create: { moduleId: sdModule.id, code: 'SD-PC', name: 'Pricing & Conditions', isActive: true },
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: sdModule.id, code: 'SD-PC' } },
+    update: {}, create: { tenantId: tenant.id, moduleId: sdModule.id, code: 'SD-PC', name: 'Pricing & Conditions', isActive: true },
   });
   const ppMRP = await prisma.sAPSubModuleMaster.upsert({
-    where: { moduleId_code: { moduleId: ppModule.id, code: 'PP-MRP' } },
-    update: {}, create: { moduleId: ppModule.id, code: 'PP-MRP', name: 'MRP / Demand Planning', isActive: true },
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ppModule.id, code: 'PP-MRP' } },
+    update: {}, create: { tenantId: tenant.id, moduleId: ppModule.id, code: 'PP-MRP', name: 'MRP / Demand Planning', isActive: true },
   });
   const ppPO = await prisma.sAPSubModuleMaster.upsert({
-    where: { moduleId_code: { moduleId: ppModule.id, code: 'PP-PO' } },
-    update: {}, create: { moduleId: ppModule.id, code: 'PP-PO', name: 'Production Orders', isActive: true },
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ppModule.id, code: 'PP-PO' } },
+    update: {}, create: { tenantId: tenant.id, moduleId: ppModule.id, code: 'PP-PO', name: 'Production Orders', isActive: true },
   });
 
   console.log('✅ SAP modules and sub-modules created');
