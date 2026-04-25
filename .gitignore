@@ -1,41 +1,79 @@
-# Environment
+# ─────────────────────────────────────────────────────────────────
+# Environment files (NEVER commit secrets)
+# ─────────────────────────────────────────────────────────────────
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
 
+# ─────────────────────────────────────────────────────────────────
+# Secrets & credentials (defensive — never commit these)
+# ─────────────────────────────────────────────────────────────────
+*.pem
+*.key
+*.p12
+id_rsa*
+credentials.json
+secrets.json
+.aws/
+.netrc
+
+# ─────────────────────────────────────────────────────────────────
 # Dependencies
+# ─────────────────────────────────────────────────────────────────
 node_modules/
 */node_modules/
 
+# ─────────────────────────────────────────────────────────────────
 # Build outputs
+# ─────────────────────────────────────────────────────────────────
 dist/
 build/
 */dist/
 */build/
+*.tsbuildinfo
 
+# ─────────────────────────────────────────────────────────────────
 # Logs
+# ─────────────────────────────────────────────────────────────────
 logs/
 *.log
 npm-debug.log*
 
+# ─────────────────────────────────────────────────────────────────
 # Prisma
+# ─────────────────────────────────────────────────────────────────
 backend/prisma/migrations/*/migration.sql
 
-# OS
+# ─────────────────────────────────────────────────────────────────
+# OS / IDE / Editor scratch
+# ─────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
-
-# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.bak
+*~
+.history/
 
-# Docker
-*.dockerignore
-
+# ─────────────────────────────────────────────────────────────────
 # Test coverage
+# ─────────────────────────────────────────────────────────────────
 coverage/
 
-# TypeScript
-*.tsbuildinfo
+# ─────────────────────────────────────────────────────────────────
+# Claude Code (.claude/ folder)
+# ─────────────────────────────────────────────────────────────────
+# Tracked (commit these — shared with team):
+#   CLAUDE.md
+#   .claude/settings.json
+#   .claude/agents/*.md
+#   .claude/commands/*.md
+#   .claude/hooks/*.sh
+#
+# Ignored (machine/user-specific):
+.claude/settings.local.json
+.claude/cache/
+.claude/secrets/
+.claude/.session/
