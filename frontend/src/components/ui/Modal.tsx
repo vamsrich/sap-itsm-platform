@@ -20,7 +20,9 @@ const SIZE = {
 export function Modal({ open, onClose, title, children, size = 'md', footer }: ModalProps) {
   useEffect(() => {
     if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
@@ -37,10 +39,7 @@ export function Modal({ open, onClose, title, children, size = 'md', footer }: M
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 rounded-lg p-1 hover:bg-gray-100"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 rounded-lg p-1 hover:bg-gray-100">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -60,9 +59,20 @@ export function Modal({ open, onClose, title, children, size = 'md', footer }: M
 }
 
 // ── Confirm Dialog ────────────────────────────────────────────
-export function ConfirmDialog({ open, onClose, onConfirm, title, message, danger }: {
-  open: boolean; onClose: () => void; onConfirm: () => void;
-  title: string; message: string; danger?: boolean;
+export function ConfirmDialog({
+  open,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  danger,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  danger?: boolean;
 }) {
   return (
     <Modal
@@ -72,11 +82,17 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, message, danger
       size="sm"
       footer={
         <>
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+          >
             Cancel
           </button>
           <button
-            onClick={() => { onConfirm(); onClose(); }}
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
             className={`px-4 py-2 text-sm text-white rounded-lg ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
             Confirm

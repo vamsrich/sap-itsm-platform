@@ -20,7 +20,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     const [notifications, total, unreadCount] = await Promise.all([
       prisma.notification.findMany({
-        where, skip, take: limit,
+        where,
+        skip,
+        take: limit,
         include: { record: { select: { id: true, recordNumber: true, title: true } } },
         orderBy: { createdAt: 'desc' },
       }),
@@ -29,7 +31,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     ]);
 
     res.json({ success: true, notifications, unreadCount, pagination: { page, limit, total } });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /notifications/inbox/count — just the unread count (for bell badge)
@@ -39,7 +43,9 @@ router.get('/count', async (req: Request, res: Response, next: NextFunction) => 
       where: { userId: req.user!.sub, tenantId: req.user!.tenantId, isRead: false },
     });
     res.json({ success: true, unreadCount: count });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // PATCH /notifications/inbox/:id/read — mark one as read
@@ -50,7 +56,9 @@ router.patch('/:id/read', async (req: Request, res: Response, next: NextFunction
       data: { isRead: true, readAt: new Date() },
     });
     res.json({ success: true });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /notifications/inbox/read-all — mark all as read
@@ -61,7 +69,9 @@ router.post('/read-all', async (req: Request, res: Response, next: NextFunction)
       data: { isRead: true, readAt: new Date() },
     });
     res.json({ success: true });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

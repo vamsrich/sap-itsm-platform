@@ -24,9 +24,7 @@ export const updateRecordSchema = z.object({
     title: z.string().min(5).max(500).optional(),
     description: z.string().min(10).max(10000).optional(),
     priority: z.enum(['P1', 'P2', 'P3', 'P4']).optional(),
-    status: z
-      .enum(['NEW', 'OPEN', 'IN_PROGRESS', 'PENDING', 'RESOLVED', 'CLOSED', 'CANCELLED'])
-      .optional(),
+    status: z.enum(['NEW', 'OPEN', 'IN_PROGRESS', 'PENDING', 'RESOLVED', 'CLOSED', 'CANCELLED']).optional(),
     assignedAgentId: z.string().uuid().nullable().optional(),
     ciId: z.string().uuid().nullable().optional(),
     sapModuleId: z.string().uuid().nullable().optional(),
@@ -41,16 +39,12 @@ export const listRecordsSchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),
     recordType: z.enum(['INCIDENT', 'REQUEST', 'PROBLEM', 'CHANGE']).optional(),
-    status: z
-      .enum(['NEW', 'OPEN', 'IN_PROGRESS', 'PENDING', 'RESOLVED', 'CLOSED', 'CANCELLED'])
-      .optional(),
+    status: z.enum(['NEW', 'OPEN', 'IN_PROGRESS', 'PENDING', 'RESOLVED', 'CLOSED', 'CANCELLED']).optional(),
     priority: z.enum(['P1', 'P2', 'P3', 'P4']).optional(),
     assignedAgentId: z.string().uuid().optional(),
     customerId: z.string().uuid().optional(),
     search: z.string().max(200).optional(),
-    sortBy: z
-      .enum(['createdAt', 'updatedAt', 'priority', 'status', 'recordNumber'])
-      .default('createdAt'),
+    sortBy: z.enum(['createdAt', 'updatedAt', 'priority', 'status', 'recordNumber']).default('createdAt'),
     sortOrder: z.enum(['asc', 'desc']).default('desc'),
     from: z.string().datetime().optional(),
     to: z.string().datetime().optional(),

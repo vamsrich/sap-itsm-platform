@@ -20,12 +20,7 @@ export function paginate(page: number, limit: number): { skip: number; take: num
   return { skip, take: limit };
 }
 
-export function buildPaginatedResult<T>(
-  data: T[],
-  total: number,
-  page: number,
-  limit: number
-): PaginatedResult<T> {
+export function buildPaginatedResult<T>(data: T[], total: number, page: number, limit: number): PaginatedResult<T> {
   const totalPages = Math.ceil(total / limit);
   return {
     data,

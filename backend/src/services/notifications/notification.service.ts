@@ -4,25 +4,36 @@ import Handlebars from 'handlebars';
 
 // ── Event Types ───────────────────────────────────────────────
 export const NOTIFICATION_EVENTS = [
-  'TICKET_CREATED', 'ASSIGNED', 'COMMENT_AGENT', 'COMMENT_USER',
-  'STATUS_CHANGED', 'PRIORITY_ESCALATED_P1', 'PRIORITY_DOWNGRADED_P1',
-  'PRIORITY_CHANGED', 'SLA_WARNING', 'SLA_BREACH',
+  'TICKET_CREATED',
+  'ASSIGNED',
+  'COMMENT_AGENT',
+  'COMMENT_USER',
+  'STATUS_CHANGED',
+  'PRIORITY_ESCALATED_P1',
+  'PRIORITY_DOWNGRADED_P1',
+  'PRIORITY_CHANGED',
+  'SLA_WARNING',
+  'SLA_BREACH',
 ] as const;
 
-export type NotificationEvent = typeof NOTIFICATION_EVENTS[number];
+export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number];
 
 export const RECIPIENT_ROLES = [
-  'CREATOR', 'ASSIGNED_AGENT', 'COMPANY_ADMIN', 'PROJECT_MANAGER', 'SUPER_ADMIN',
+  'CREATOR',
+  'ASSIGNED_AGENT',
+  'COMPANY_ADMIN',
+  'PROJECT_MANAGER',
+  'SUPER_ADMIN',
 ] as const;
 
-export type RecipientRole = typeof RECIPIENT_ROLES[number];
+export type RecipientRole = (typeof RECIPIENT_ROLES)[number];
 
 export const RECIPIENT_TYPES = ['PRIMARY', 'SECONDARY', 'ESCALATION'] as const;
-export type RecipientType = typeof RECIPIENT_TYPES[number];
+export type RecipientType = (typeof RECIPIENT_TYPES)[number];
 
 export interface RecipientEntry {
   role: string;
-  recipientType: string;      // PRIMARY, SECONDARY, ESCALATION
+  recipientType: string; // PRIMARY, SECONDARY, ESCALATION
 }
 
 export const RECIPIENT_TYPE_LABELS: Record<string, string> = {
@@ -54,8 +65,11 @@ export const RECIPIENT_LABELS: Record<string, string> = {
 
 // ── Default Email Templates (used for seeding) ───────────────
 export const DEFAULT_EMAIL_TEMPLATES: Array<{
-  templateKey: string; label: string; description: string;
-  subjectTemplate: string; bodyTemplate: string;
+  templateKey: string;
+  label: string;
+  description: string;
+  subjectTemplate: string;
+  bodyTemplate: string;
 }> = [
   {
     templateKey: 'RECORD_CREATED',
@@ -199,7 +213,10 @@ export const DEFAULT_EMAIL_TEMPLATES: Array<{
 ];
 
 // ── Load template from DB (falls back to hardcoded) ───────────
-async function getEmailTemplate(tenantId: string, templateKey: string): Promise<{ subject: string; html: string } | null> {
+async function getEmailTemplate(
+  tenantId: string,
+  templateKey: string,
+): Promise<{ subject: string; html: string } | null> {
   const dbTemplate = await prisma.emailTemplate.findUnique({
     where: { tenantId_templateKey: { tenantId, templateKey } },
   });
@@ -207,7 +224,7 @@ async function getEmailTemplate(tenantId: string, templateKey: string): Promise<
     return { subject: dbTemplate.subjectTemplate, html: dbTemplate.bodyTemplate };
   }
   // Fallback to hardcoded defaults
-  const fallback = DEFAULT_EMAIL_TEMPLATES.find(t => t.templateKey === templateKey);
+  const fallback = DEFAULT_EMAIL_TEMPLATES.find((t) => t.templateKey === templateKey);
   if (fallback) {
     return { subject: fallback.subjectTemplate, html: fallback.bodyTemplate };
   }
@@ -276,7 +293,7 @@ function generateNotificationBody(event: string, vars: Record<string, any>): str
 // ── Core: resolve recipients with role context ────────────────
 export interface ResolvedRecipient {
   userId: string;
-  role: string;  // the NotificationRule role that resolved this user: CREATOR, ASSIGNED_AGENT, etc.
+  role: string; // the NotificationRule role that resolved this user: CREATOR, ASSIGNED_AGENT, etc.
 }
 
 export async function resolveRecipients(
@@ -295,7 +312,8 @@ export async function resolveRecipients(
       case 'ASSIGNED_AGENT':
         if (record.assignedAgentId) {
           const agent = await prisma.agent.findUnique({
-            where: { id: record.assignedAgentId }, select: { userId: true },
+            where: { id: record.assignedAgentId },
+            select: { userId: true },
           });
           if (agent && !recipients.has(agent.userId)) recipients.set(agent.userId, 'ASSIGNED_AGENT');
         }
@@ -303,7 +321,8 @@ export async function resolveRecipients(
       case 'COMPANY_ADMIN':
         if (record.customerId) {
           const cust = await prisma.customer.findUnique({
-            where: { id: record.customerId }, select: { adminUserId: true },
+            where: { id: record.customerId },
+            select: { adminUserId: true },
           });
           if (cust?.adminUserId && !recipients.has(cust.adminUserId)) recipients.set(cust.adminUserId, 'COMPANY_ADMIN');
         }
@@ -321,7 +340,8 @@ export async function resolveRecipients(
         break;
       case 'SUPER_ADMIN': {
         const admins = await prisma.user.findMany({
-          where: { tenantId, role: 'SUPER_ADMIN', status: 'ACTIVE' }, select: { id: true },
+          where: { tenantId, role: 'SUPER_ADMIN', status: 'ACTIVE' },
+          select: { id: true },
         });
         for (const a of admins) {
           if (!recipients.has(a.id)) recipients.set(a.id, 'SUPER_ADMIN');
@@ -339,16 +359,22 @@ export async function resolveRecipients(
 
 // Legacy wrapper for preview endpoint
 export async function resolveRecipientUserIds(
-  roles: string[], record: any, tenantId: string, triggeredByUserId: string,
+  roles: string[],
+  record: any,
+  tenantId: string,
+  triggeredByUserId: string,
 ): Promise<string[]> {
   const resolved = await resolveRecipients(roles, record, tenantId, triggeredByUserId);
-  return resolved.map(r => r.userId);
+  return resolved.map((r) => r.userId);
 }
 
 // ── Core: find matching rules ─────────────────────────────────
 export async function findMatchingRules(
-  tenantId: string, event: string, priority: string | null,
-  customerId: string | null, toStatus?: string | null,
+  tenantId: string,
+  event: string,
+  priority: string | null,
+  customerId: string | null,
+  toStatus?: string | null,
 ) {
   const customerRules = customerId
     ? await prisma.notificationRule.findMany({
@@ -363,7 +389,7 @@ export async function findMatchingRules(
   // Customer rules override defaults
   const rules = customerRules.length > 0 ? customerRules : defaultRules;
 
-  return rules.filter(r => {
+  return rules.filter((r) => {
     if (r.priority && r.priority !== priority) return false;
     if (r.statusFilter && r.statusFilter !== toStatus) return false;
     return true;
@@ -378,7 +404,7 @@ export interface NotifyInput {
   event: string;
   recordId: string;
   tenantId: string;
-  triggeredBy: string;        // userId who triggered, or 'system'
+  triggeredBy: string; // userId who triggered, or 'system'
   payload?: {
     oldStatus?: string;
     newStatus?: string;
@@ -418,9 +444,7 @@ export async function notify(input: NotifyInput): Promise<{
     }
 
     // 2. Find matching rules
-    const rules = await findMatchingRules(
-      tenantId, event, record.priority, record.customerId, payload.newStatus,
-    );
+    const rules = await findMatchingRules(tenantId, event, record.priority, record.customerId, payload.newStatus);
     stats.rulesMatched = rules.length;
 
     if (rules.length === 0) {
@@ -440,7 +464,7 @@ export async function notify(input: NotifyInput): Promise<{
     for (const rule of rules) {
       const entries = (rule.recipients as any as RecipientEntry[]) || [];
       for (const entry of entries) {
-        if (!allRecipientEntries.find(e => e.role === entry.role)) {
+        if (!allRecipientEntries.find((e) => e.role === entry.role)) {
           allRecipientEntries.push(entry);
         }
       }
@@ -453,7 +477,7 @@ export async function notify(input: NotifyInput): Promise<{
 
     // 4. Resolve each recipient to userId with their role context
     const resolvedRecipients = await resolveRecipients(
-      allRecipientEntries.map(e => e.role),
+      allRecipientEntries.map((e) => e.role),
       { createdById: record.createdById, assignedAgentId: record.assignedAgentId, customerId: record.customerId },
       tenantId,
       triggeredBy,
@@ -466,9 +490,12 @@ export async function notify(input: NotifyInput): Promise<{
     }
 
     // 5. Build template variables
-    const portalUrl = process.env.PORTAL_URL || (process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',')[0].trim() : 'http://localhost:3000');
+    const portalUrl =
+      process.env.PORTAL_URL ||
+      (process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',')[0].trim() : 'http://localhost:3000');
     const assignedAgentName = record.assignedAgent
-      ? `${record.assignedAgent.user.firstName} ${record.assignedAgent.user.lastName}` : 'Unassigned';
+      ? `${record.assignedAgent.user.firstName} ${record.assignedAgent.user.lastName}`
+      : 'Unassigned';
     const vars: Record<string, any> = {
       recordId: record.id,
       recordNumber: record.recordNumber,
@@ -484,7 +511,7 @@ export async function notify(input: NotifyInput): Promise<{
     };
 
     // 6. Resolve recipient user details
-    const userIds = resolvedRecipients.map(r => r.userId);
+    const userIds = resolvedRecipients.map((r) => r.userId);
     const users = await prisma.user.findMany({
       where: { id: { in: userIds } },
       select: { id: true, email: true, firstName: true, lastName: true },
@@ -501,17 +528,20 @@ export async function notify(input: NotifyInput): Promise<{
 
     // 8. For each recipient: determine template by type, create in-app + queue email
     for (const resolved of resolvedRecipients) {
-      const user = users.find(u => u.id === resolved.userId);
+      const user = users.find((u) => u.id === resolved.userId);
       if (!user) continue;
 
       const recipientVars = { ...vars, recipientName: `${user.firstName} ${user.lastName}` };
-      const entry = allRecipientEntries.find(e => e.role === resolved.role);
+      const entry = allRecipientEntries.find((e) => e.role === resolved.role);
       const recipientType = entry?.recipientType || 'PRIMARY';
 
       // Resolve template ID based on recipient type
-      const templateId = recipientType === 'PRIMARY' ? primaryTemplateId
-        : recipientType === 'SECONDARY' ? secondaryTemplateId
-        : escalationTemplateId;
+      const templateId =
+        recipientType === 'PRIMARY'
+          ? primaryTemplateId
+          : recipientType === 'SECONDARY'
+            ? secondaryTemplateId
+            : escalationTemplateId;
 
       const template = templateId ? templateCache[templateId] : null;
       const templateKey = templateId || recipientType;
@@ -562,7 +592,7 @@ export async function notify(input: NotifyInput): Promise<{
 
     logger.info(
       `[notify] ${event} on ${record.recordNumber}: ${stats.rulesMatched} rules, ` +
-      `${stats.recipientsNotified} recipients, ${stats.emailsQueued} emails queued, ${stats.inAppCreated} in-app`
+        `${stats.recipientsNotified} recipients, ${stats.emailsQueued} emails queued, ${stats.inAppCreated} in-app`,
     );
   } catch (err) {
     logger.error(`[notify] Error processing ${event} for record ${recordId}:`, err);
@@ -575,100 +605,187 @@ export async function notify(input: NotifyInput): Promise<{
 export async function seedDefaultNotificationRules(tenantId: string): Promise<number> {
   // Get default template IDs for this tenant
   const templates = await prisma.emailTemplate.findMany({
-    where: { tenantId }, select: { id: true, templateKey: true },
+    where: { tenantId },
+    select: { id: true, templateKey: true },
   });
-  const tplMap = new Map(templates.map(t => [t.templateKey, t.id]));
+  const tplMap = new Map(templates.map((t) => [t.templateKey, t.id]));
 
   const defaults: Array<{
-    event: string; priority: string | null; statusFilter: string | null;
+    event: string;
+    priority: string | null;
+    statusFilter: string | null;
     recipients: RecipientEntry[];
-    primaryTemplateKey?: string; secondaryTemplateKey?: string; escalationTemplateKey?: string;
+    primaryTemplateKey?: string;
+    secondaryTemplateKey?: string;
+    escalationTemplateKey?: string;
   }> = [
-    { event: 'TICKET_CREATED', priority: null, statusFilter: null,
+    {
+      event: 'TICKET_CREATED',
+      priority: null,
+      statusFilter: null,
       recipients: [{ role: 'CREATOR', recipientType: 'PRIMARY' }],
-      primaryTemplateKey: 'RECORD_CREATED' },
-    { event: 'TICKET_CREATED', priority: 'P1', statusFilter: null,
+      primaryTemplateKey: 'RECORD_CREATED',
+    },
+    {
+      event: 'TICKET_CREATED',
+      priority: 'P1',
+      statusFilter: null,
       recipients: [{ role: 'COMPANY_ADMIN', recipientType: 'ESCALATION' }],
-      escalationTemplateKey: 'RECORD_CREATED_FYI' },
-    { event: 'ASSIGNED', priority: null, statusFilter: null,
+      escalationTemplateKey: 'RECORD_CREATED_FYI',
+    },
+    {
+      event: 'ASSIGNED',
+      priority: null,
+      statusFilter: null,
       recipients: [
         { role: 'ASSIGNED_AGENT', recipientType: 'PRIMARY' },
         { role: 'CREATOR', recipientType: 'SECONDARY' },
       ],
-      primaryTemplateKey: 'RECORD_ASSIGNED', secondaryTemplateKey: 'RECORD_ASSIGNED_FYI' },
-    { event: 'ASSIGNED', priority: 'P1', statusFilter: null,
+      primaryTemplateKey: 'RECORD_ASSIGNED',
+      secondaryTemplateKey: 'RECORD_ASSIGNED_FYI',
+    },
+    {
+      event: 'ASSIGNED',
+      priority: 'P1',
+      statusFilter: null,
       recipients: [{ role: 'COMPANY_ADMIN', recipientType: 'ESCALATION' }],
-      escalationTemplateKey: 'RECORD_ASSIGNED_FYI' },
-    { event: 'COMMENT_AGENT', priority: null, statusFilter: null,
+      escalationTemplateKey: 'RECORD_ASSIGNED_FYI',
+    },
+    {
+      event: 'COMMENT_AGENT',
+      priority: null,
+      statusFilter: null,
       recipients: [{ role: 'CREATOR', recipientType: 'PRIMARY' }],
-      primaryTemplateKey: 'COMMENT_ADDED' },
-    { event: 'COMMENT_AGENT', priority: 'P1', statusFilter: null,
+      primaryTemplateKey: 'COMMENT_ADDED',
+    },
+    {
+      event: 'COMMENT_AGENT',
+      priority: 'P1',
+      statusFilter: null,
       recipients: [{ role: 'COMPANY_ADMIN', recipientType: 'ESCALATION' }],
-      escalationTemplateKey: 'COMMENT_ADDED_FYI' },
-    { event: 'COMMENT_USER', priority: null, statusFilter: null,
+      escalationTemplateKey: 'COMMENT_ADDED_FYI',
+    },
+    {
+      event: 'COMMENT_USER',
+      priority: null,
+      statusFilter: null,
       recipients: [{ role: 'ASSIGNED_AGENT', recipientType: 'PRIMARY' }],
-      primaryTemplateKey: 'COMMENT_ADDED' },
-    { event: 'STATUS_CHANGED', priority: null, statusFilter: 'PENDING',
+      primaryTemplateKey: 'COMMENT_ADDED',
+    },
+    {
+      event: 'STATUS_CHANGED',
+      priority: null,
+      statusFilter: 'PENDING',
       recipients: [{ role: 'CREATOR', recipientType: 'PRIMARY' }],
-      primaryTemplateKey: 'STATUS_CHANGED' },
-    { event: 'STATUS_CHANGED', priority: null, statusFilter: 'RESOLVED',
+      primaryTemplateKey: 'STATUS_CHANGED',
+    },
+    {
+      event: 'STATUS_CHANGED',
+      priority: null,
+      statusFilter: 'RESOLVED',
       recipients: [{ role: 'CREATOR', recipientType: 'PRIMARY' }],
-      primaryTemplateKey: 'STATUS_CHANGED' },
-    { event: 'STATUS_CHANGED', priority: null, statusFilter: 'CLOSED',
+      primaryTemplateKey: 'STATUS_CHANGED',
+    },
+    {
+      event: 'STATUS_CHANGED',
+      priority: null,
+      statusFilter: 'CLOSED',
       recipients: [{ role: 'CREATOR', recipientType: 'PRIMARY' }],
-      primaryTemplateKey: 'STATUS_CHANGED' },
-    { event: 'STATUS_CHANGED', priority: null, statusFilter: 'OPEN',
+      primaryTemplateKey: 'STATUS_CHANGED',
+    },
+    {
+      event: 'STATUS_CHANGED',
+      priority: null,
+      statusFilter: 'OPEN',
       recipients: [{ role: 'ASSIGNED_AGENT', recipientType: 'PRIMARY' }],
-      primaryTemplateKey: 'STATUS_CHANGED' },
-    { event: 'STATUS_CHANGED', priority: 'P1', statusFilter: null,
+      primaryTemplateKey: 'STATUS_CHANGED',
+    },
+    {
+      event: 'STATUS_CHANGED',
+      priority: 'P1',
+      statusFilter: null,
       recipients: [
         { role: 'PROJECT_MANAGER', recipientType: 'ESCALATION' },
         { role: 'COMPANY_ADMIN', recipientType: 'ESCALATION' },
       ],
-      escalationTemplateKey: 'STATUS_CHANGED_FYI' },
-    { event: 'PRIORITY_ESCALATED_P1', priority: null, statusFilter: null,
+      escalationTemplateKey: 'STATUS_CHANGED_FYI',
+    },
+    {
+      event: 'PRIORITY_ESCALATED_P1',
+      priority: null,
+      statusFilter: null,
       recipients: [
         { role: 'ASSIGNED_AGENT', recipientType: 'PRIMARY' },
         { role: 'PROJECT_MANAGER', recipientType: 'ESCALATION' },
         { role: 'COMPANY_ADMIN', recipientType: 'ESCALATION' },
       ],
-      primaryTemplateKey: 'STATUS_CHANGED', escalationTemplateKey: 'STATUS_CHANGED_FYI' },
-    { event: 'SLA_WARNING', priority: null, statusFilter: null,
+      primaryTemplateKey: 'STATUS_CHANGED',
+      escalationTemplateKey: 'STATUS_CHANGED_FYI',
+    },
+    {
+      event: 'SLA_WARNING',
+      priority: null,
+      statusFilter: null,
       recipients: [{ role: 'ASSIGNED_AGENT', recipientType: 'PRIMARY' }],
-      primaryTemplateKey: 'SLA_WARNING' },
-    { event: 'SLA_WARNING', priority: 'P1', statusFilter: null,
+      primaryTemplateKey: 'SLA_WARNING',
+    },
+    {
+      event: 'SLA_WARNING',
+      priority: 'P1',
+      statusFilter: null,
       recipients: [{ role: 'PROJECT_MANAGER', recipientType: 'ESCALATION' }],
-      escalationTemplateKey: 'SLA_WARNING' },
-    { event: 'SLA_BREACH', priority: null, statusFilter: null,
+      escalationTemplateKey: 'SLA_WARNING',
+    },
+    {
+      event: 'SLA_BREACH',
+      priority: null,
+      statusFilter: null,
       recipients: [
         { role: 'ASSIGNED_AGENT', recipientType: 'PRIMARY' },
         { role: 'CREATOR', recipientType: 'SECONDARY' },
       ],
-      primaryTemplateKey: 'SLA_BREACH', secondaryTemplateKey: 'SLA_BREACH' },
-    { event: 'SLA_BREACH', priority: 'P1', statusFilter: null,
+      primaryTemplateKey: 'SLA_BREACH',
+      secondaryTemplateKey: 'SLA_BREACH',
+    },
+    {
+      event: 'SLA_BREACH',
+      priority: 'P1',
+      statusFilter: null,
       recipients: [
         { role: 'COMPANY_ADMIN', recipientType: 'ESCALATION' },
         { role: 'PROJECT_MANAGER', recipientType: 'ESCALATION' },
         { role: 'SUPER_ADMIN', recipientType: 'ESCALATION' },
       ],
-      escalationTemplateKey: 'SLA_BREACH' },
+      escalationTemplateKey: 'SLA_BREACH',
+    },
   ];
 
   let count = 0;
   for (const rule of defaults) {
     const existing = await prisma.notificationRule.findFirst({
-      where: { tenantId, customerId: null, event: rule.event, priority: rule.priority, statusFilter: rule.statusFilter },
+      where: {
+        tenantId,
+        customerId: null,
+        event: rule.event,
+        priority: rule.priority,
+        statusFilter: rule.statusFilter,
+      },
     });
     if (!existing) {
       await prisma.notificationRule.create({
         data: {
-          tenantId, customerId: null,
-          event: rule.event, priority: rule.priority, statusFilter: rule.statusFilter,
+          tenantId,
+          customerId: null,
+          event: rule.event,
+          priority: rule.priority,
+          statusFilter: rule.statusFilter,
           recipients: rule.recipients as any,
           primaryTemplateId: rule.primaryTemplateKey ? tplMap.get(rule.primaryTemplateKey) || null : null,
           secondaryTemplateId: rule.secondaryTemplateKey ? tplMap.get(rule.secondaryTemplateKey) || null : null,
           escalationTemplateId: rule.escalationTemplateKey ? tplMap.get(rule.escalationTemplateKey) || null : null,
-          emailEnabled: true, inAppEnabled: true, isActive: true,
+          emailEnabled: true,
+          inAppEnabled: true,
+          isActive: true,
         },
       });
       count++;

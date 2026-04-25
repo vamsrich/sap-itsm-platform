@@ -9,35 +9,107 @@ import { Plus, Pencil, Trash2, Tag } from 'lucide-react';
 // ── Constants ────────────────────────────────────────────────
 
 const BASE_TYPES = [
-  { value: 'GOLD',   label: 'Gold',   desc: 'Premium tier — highest SLA commitments',  bg: 'bg-yellow-50',  border: 'border-yellow-300', badge: 'bg-yellow-100 text-yellow-800' },
-  { value: 'SILVER', label: 'Silver', desc: 'Standard tier — balanced SLA coverage',   bg: 'bg-gray-50',    border: 'border-gray-300',   badge: 'bg-gray-100 text-gray-700' },
-  { value: 'BRONZE', label: 'Bronze', desc: 'Basic tier — essential SLA coverage',     bg: 'bg-orange-50',  border: 'border-orange-300', badge: 'bg-orange-100 text-orange-700' },
-  { value: 'CUSTOM', label: 'Custom', desc: 'Fully configurable — define your own SLA', bg: 'bg-purple-50', border: 'border-purple-300', badge: 'bg-purple-100 text-purple-700' },
+  {
+    value: 'GOLD',
+    label: 'Gold',
+    desc: 'Premium tier — highest SLA commitments',
+    bg: 'bg-yellow-50',
+    border: 'border-yellow-300',
+    badge: 'bg-yellow-100 text-yellow-800',
+  },
+  {
+    value: 'SILVER',
+    label: 'Silver',
+    desc: 'Standard tier — balanced SLA coverage',
+    bg: 'bg-gray-50',
+    border: 'border-gray-300',
+    badge: 'bg-gray-100 text-gray-700',
+  },
+  {
+    value: 'BRONZE',
+    label: 'Bronze',
+    desc: 'Basic tier — essential SLA coverage',
+    bg: 'bg-orange-50',
+    border: 'border-orange-300',
+    badge: 'bg-orange-100 text-orange-700',
+  },
+  {
+    value: 'CUSTOM',
+    label: 'Custom',
+    desc: 'Fully configurable — define your own SLA',
+    bg: 'bg-purple-50',
+    border: 'border-purple-300',
+    badge: 'bg-purple-100 text-purple-700',
+  },
 ];
 
 const PRESET_SLA: Record<string, any> = {
-  GOLD:   { P1: { response: 15,  resolution: 240,  enabled: true }, P2: { response: 30,  resolution: 480,  enabled: true }, P3: { response: 120, resolution: 1440, enabled: true }, P4: { response: 240, resolution: 2880, enabled: true } },
-  SILVER: { P1: { response: 30,  resolution: 480,  enabled: true }, P2: { response: 60,  resolution: 960,  enabled: true }, P3: { response: 240, resolution: 2880, enabled: true }, P4: { response: 480, resolution: 5760, enabled: true } },
-  BRONZE: { P1: { response: 60,  resolution: 720,  enabled: true }, P2: { response: 120, resolution: 1440, enabled: true }, P3: { response: 480, resolution: 2880, enabled: true }, P4: { response: 960, resolution: 5760, enabled: true } },
-  CUSTOM: { P1: { response: 60,  resolution: 480,  enabled: true }, P2: { response: 120, resolution: 960,  enabled: true }, P3: { response: 480, resolution: 2880, enabled: true }, P4: { response: 960, resolution: 5760, enabled: true } },
+  GOLD: {
+    P1: { response: 15, resolution: 240, enabled: true },
+    P2: { response: 30, resolution: 480, enabled: true },
+    P3: { response: 120, resolution: 1440, enabled: true },
+    P4: { response: 240, resolution: 2880, enabled: true },
+  },
+  SILVER: {
+    P1: { response: 30, resolution: 480, enabled: true },
+    P2: { response: 60, resolution: 960, enabled: true },
+    P3: { response: 240, resolution: 2880, enabled: true },
+    P4: { response: 480, resolution: 5760, enabled: true },
+  },
+  BRONZE: {
+    P1: { response: 60, resolution: 720, enabled: true },
+    P2: { response: 120, resolution: 1440, enabled: true },
+    P3: { response: 480, resolution: 2880, enabled: true },
+    P4: { response: 960, resolution: 5760, enabled: true },
+  },
+  CUSTOM: {
+    P1: { response: 60, resolution: 480, enabled: true },
+    P2: { response: 120, resolution: 960, enabled: true },
+    P3: { response: 480, resolution: 2880, enabled: true },
+    P4: { response: 960, resolution: 5760, enabled: true },
+  },
 };
 
-const SLA_LABELS  = { P1: 'P1 – Critical', P2: 'P2 – Major', P3: 'P3 – Minor', P4: 'P4 – Query' } as Record<string,string>;
-const SLA_COLORS  = { P1: 'text-red-600',  P2: 'text-orange-500', P3: 'text-blue-600', P4: 'text-green-600' } as Record<string,string>;
+const SLA_LABELS = { P1: 'P1 – Critical', P2: 'P2 – Major', P3: 'P3 – Minor', P4: 'P4 – Query' } as Record<
+  string,
+  string
+>;
+const SLA_COLORS = { P1: 'text-red-600', P2: 'text-orange-500', P3: 'text-blue-600', P4: 'text-green-600' } as Record<
+  string,
+  string
+>;
 
 const COLORS = [
-  '#EAB308','#94A3B8','#F97316','#8B5CF6','#10B981','#3B82F6','#EF4444','#EC4899','#06B6D4','#84CC16',
+  '#EAB308',
+  '#94A3B8',
+  '#F97316',
+  '#8B5CF6',
+  '#10B981',
+  '#3B82F6',
+  '#EF4444',
+  '#EC4899',
+  '#06B6D4',
+  '#84CC16',
 ];
 
-const ic = 'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white';
+const ic =
+  'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white';
 
 interface TypeForm {
-  name: string; code: string; baseType: string; color: string; description: string;
+  name: string;
+  code: string;
+  baseType: string;
+  color: string;
+  description: string;
   isActive: boolean;
   slaConfig: Record<string, { response: number; resolution: number; enabled: boolean }>;
 }
 const blank: TypeForm = {
-  name: '', code: '', baseType: 'CUSTOM', color: '#8B5CF6', description: '',
+  name: '',
+  code: '',
+  baseType: 'CUSTOM',
+  color: '#8B5CF6',
+  description: '',
   isActive: true,
   slaConfig: JSON.parse(JSON.stringify(PRESET_SLA.CUSTOM)),
 };
@@ -55,18 +127,24 @@ export default function ContractTypeMasterPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['contract-types'],
-    queryFn: () => contractTypesApi.list().then(r => r.data.types || []),
+    queryFn: () => contractTypesApi.list().then((r) => r.data.types || []),
   });
   const types: any[] = data || [];
 
-  const setF = <K extends keyof TypeForm>(k: K, v: TypeForm[K]) => setForm(f => ({ ...f, [k]: v }));
+  const setF = <K extends keyof TypeForm>(k: K, v: TypeForm[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const setSLA = (p: string, field: string, val: string | boolean) =>
-    setForm(f => ({ ...f, slaConfig: { ...f.slaConfig, [p]: { ...f.slaConfig[p], [field]: field === 'enabled' ? val : (parseInt(val as string) || 0) } } }));
+    setForm((f) => ({
+      ...f,
+      slaConfig: {
+        ...f.slaConfig,
+        [p]: { ...f.slaConfig[p], [field]: field === 'enabled' ? val : parseInt(val as string) || 0 },
+      },
+    }));
 
   const handleBaseTypeChange = (bt: string) => {
     // Auto-fill code from name if empty, and load preset SLA
-    setForm(f => ({
+    setForm((f) => ({
       ...f,
       baseType: bt,
       slaConfig: JSON.parse(JSON.stringify(PRESET_SLA[bt] || PRESET_SLA.CUSTOM)),
@@ -75,23 +153,33 @@ export default function ContractTypeMasterPage() {
   };
 
   const handleNameChange = (name: string) => {
-    setForm(f => ({
+    setForm((f) => ({
       ...f,
       name,
       // Auto-generate code from name if code not manually set yet
-      code: editId ? f.code : name.toUpperCase().replace(/[^A-Z0-9]/g, '_').replace(/_+/g,'_').slice(0, 20),
+      code: editId
+        ? f.code
+        : name
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '_')
+            .replace(/_+/g, '_')
+            .slice(0, 20),
     }));
   };
 
   const handleOpen = (t?: any) => {
     if (t) {
       setForm({
-        name: t.name, code: t.code, baseType: t.baseType || 'CUSTOM',
-        color: t.color || '#8B5CF6', description: t.description || '',
+        name: t.name,
+        code: t.code,
+        baseType: t.baseType || 'CUSTOM',
+        color: t.color || '#8B5CF6',
+        description: t.description || '',
         isActive: t.isActive !== false,
-        slaConfig: t.slaConfig && Object.keys(t.slaConfig).length > 0
-          ? t.slaConfig
-          : JSON.parse(JSON.stringify(PRESET_SLA[t.baseType || 'CUSTOM'])),
+        slaConfig:
+          t.slaConfig && Object.keys(t.slaConfig).length > 0
+            ? t.slaConfig
+            : JSON.parse(JSON.stringify(PRESET_SLA[t.baseType || 'CUSTOM'])),
       });
       setEditId(t.id);
     } else {
@@ -102,8 +190,14 @@ export default function ContractTypeMasterPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { toast.error('Name is required'); return; }
-    if (!form.code.trim()) { toast.error('Code is required'); return; }
+    if (!form.name.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+    if (!form.code.trim()) {
+      toast.error('Code is required');
+      return;
+    }
     setSaving(true);
     try {
       const payload = { ...form, slaConfig: form.slaConfig };
@@ -116,8 +210,11 @@ export default function ContractTypeMasterPage() {
       }
       qc.invalidateQueries({ queryKey: ['contract-types'] });
       setModal(false);
-    } catch (e) { toast.error(getErrorMessage(e)); }
-    finally { setSaving(false); }
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -127,11 +224,14 @@ export default function ContractTypeMasterPage() {
       await contractTypesApi.delete(id);
       toast.success('Contract type deleted');
       qc.invalidateQueries({ queryKey: ['contract-types'] });
-    } catch (e) { toast.error(getErrorMessage(e)); }
-    finally { setDeleting(null); }
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setDeleting(null);
+    }
   };
 
-  const baseInfo = (bt: string) => BASE_TYPES.find(b => b.value === bt) || BASE_TYPES[3];
+  const baseInfo = (bt: string) => BASE_TYPES.find((b) => b.value === bt) || BASE_TYPES[3];
 
   return (
     <div className="p-6 max-w-screen-xl mx-auto space-y-5">
@@ -143,7 +243,9 @@ export default function ContractTypeMasterPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Contract Type Master</h1>
-            <p className="text-xs text-gray-400">Define contract tiers with SLA templates — Gold, Silver, Bronze, and Custom</p>
+            <p className="text-xs text-gray-400">
+              Define contract tiers with SLA templates — Gold, Silver, Bronze, and Custom
+            </p>
           </div>
         </div>
         {isSuperAdmin && (
@@ -165,8 +267,10 @@ export default function ContractTypeMasterPage() {
           <p className="text-gray-500 font-medium">No contract types configured yet</p>
           <p className="text-sm text-gray-400 mt-1">Create types like Gold, Silver, Bronze or custom tiers</p>
           {isSuperAdmin && (
-            <button onClick={() => handleOpen()}
-              className="mt-4 inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            <button
+              onClick={() => handleOpen()}
+              className="mt-4 inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            >
               <Plus className="w-4 h-4" /> Create First Type
             </button>
           )}
@@ -177,36 +281,50 @@ export default function ContractTypeMasterPage() {
             const bi = baseInfo(t.baseType);
             const sla = t.slaConfig || {};
             return (
-              <div key={t.id} className={`bg-white rounded-2xl border-2 shadow-sm p-5 flex flex-col gap-4 ${t.isActive ? 'border-gray-100' : 'border-gray-100 opacity-60'}`}>
+              <div
+                key={t.id}
+                className={`bg-white rounded-2xl border-2 shadow-sm p-5 flex flex-col gap-4 ${t.isActive ? 'border-gray-100' : 'border-gray-100 opacity-60'}`}
+              >
                 {/* Card header */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm"
-                      style={{ backgroundColor: t.color || '#8B5CF6' }}>
-                      {t.code?.slice(0,2)}
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm"
+                      style={{ backgroundColor: t.color || '#8B5CF6' }}
+                    >
+                      {t.code?.slice(0, 2)}
                     </div>
                     <div>
                       <h3 className="font-bold text-gray-900 text-base leading-tight">{t.name}</h3>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="font-mono text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">{t.code}</span>
+                        <span className="font-mono text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
+                          {t.code}
+                        </span>
                         <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${bi.badge}`}>{bi.label}</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
                     {!t.isActive && (
-                      <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full font-medium">Inactive</span>
+                      <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full font-medium">
+                        Inactive
+                      </span>
                     )}
                     {isSuperAdmin && (
                       <>
-                        <button onClick={() => handleOpen(t)} className="p-1.5 text-blue-400 hover:text-blue-600 rounded hover:bg-blue-50 transition-colors">
+                        <button
+                          onClick={() => handleOpen(t)}
+                          className="p-1.5 text-blue-400 hover:text-blue-600 rounded hover:bg-blue-50 transition-colors"
+                        >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDelete(t.id, t.name)}
                           disabled={deleting === t.id || (t._count?.contracts || 0) > 0}
                           className="p-1.5 text-red-300 hover:text-red-500 rounded hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                          title={(t._count?.contracts || 0) > 0 ? `${t._count.contracts} contracts use this type` : 'Delete'}
+                          title={
+                            (t._count?.contracts || 0) > 0 ? `${t._count.contracts} contracts use this type` : 'Delete'
+                          }
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -232,10 +350,12 @@ export default function ContractTypeMasterPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {['P1','P2','P3','P4'].map(p => (
+                      {['P1', 'P2', 'P3', 'P4'].map((p) => (
                         <tr key={p}>
                           <td className={`px-3 py-1.5 font-semibold ${SLA_COLORS[p]}`}>{p}</td>
-                          <td className="px-3 py-1.5 text-center text-gray-600 font-medium">{sla[p]?.response ?? '—'} min</td>
+                          <td className="px-3 py-1.5 text-center text-gray-600 font-medium">
+                            {sla[p]?.response ?? '—'} min
+                          </td>
                           <td className="px-3 py-1.5 text-center text-gray-600">{sla[p]?.resolution ?? '—'} min</td>
                         </tr>
                       ))}
@@ -245,7 +365,9 @@ export default function ContractTypeMasterPage() {
 
                 {/* Footer */}
                 <div className="flex items-center justify-between text-xs text-gray-400 -mt-1">
-                  <span>{t._count?.contracts || 0} contract{(t._count?.contracts || 0) !== 1 ? 's' : ''}</span>
+                  <span>
+                    {t._count?.contracts || 0} contract{(t._count?.contracts || 0) !== 1 ? 's' : ''}
+                  </span>
                   <span className={`font-medium ${t.isActive ? 'text-green-600' : 'text-gray-400'}`}>
                     {t.isActive ? '● Active' : '○ Inactive'}
                   </span>
@@ -263,16 +385,24 @@ export default function ContractTypeMasterPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between px-7 py-5 bg-gradient-to-r from-slate-800 to-violet-900 rounded-t-2xl flex-shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                  style={{ backgroundColor: form.color }}>
-                  {form.code?.slice(0,2) || '?'}
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
+                  style={{ backgroundColor: form.color }}
+                >
+                  {form.code?.slice(0, 2) || '?'}
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">{editId ? 'Edit Contract Type' : 'New Contract Type'}</h2>
-                  <p className="text-xs text-white/50">{editId ? 'Update type definition and SLA' : 'Define a new contract tier with SLA targets'}</p>
+                  <h2 className="text-lg font-bold text-white">
+                    {editId ? 'Edit Contract Type' : 'New Contract Type'}
+                  </h2>
+                  <p className="text-xs text-white/50">
+                    {editId ? 'Update type definition and SLA' : 'Define a new contract tier with SLA targets'}
+                  </p>
                 </div>
               </div>
-              <button onClick={() => setModal(false)} className="text-white/60 hover:text-white text-2xl leading-none">×</button>
+              <button onClick={() => setModal(false)} className="text-white/60 hover:text-white text-2xl leading-none">
+                ×
+              </button>
             </div>
 
             <div className="p-7 space-y-6 overflow-y-auto">
@@ -280,41 +410,65 @@ export default function ContractTypeMasterPage() {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Base Type</label>
                 <div className="grid grid-cols-4 gap-2">
-                  {BASE_TYPES.map(bt => (
-                    <button key={bt.value} type="button" onClick={() => handleBaseTypeChange(bt.value)}
+                  {BASE_TYPES.map((bt) => (
+                    <button
+                      key={bt.value}
+                      type="button"
+                      onClick={() => handleBaseTypeChange(bt.value)}
                       className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-center ${
                         form.baseType === bt.value
                           ? `${bt.border} ${bt.bg} shadow-sm`
                           : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}>
-                      <span className={`text-xs font-bold ${form.baseType === bt.value ? '' : 'text-gray-600'}`}>{bt.label}</span>
+                      }`}
+                    >
+                      <span className={`text-xs font-bold ${form.baseType === bt.value ? '' : 'text-gray-600'}`}>
+                        {bt.label}
+                      </span>
                     </button>
                   ))}
                 </div>
                 <p className="text-xs text-gray-400 mt-1.5">
-                  {BASE_TYPES.find(b => b.value === form.baseType)?.desc}
+                  {BASE_TYPES.find((b) => b.value === form.baseType)?.desc}
                 </p>
               </div>
 
               {/* Name + Code */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Type Name <span className="text-red-500">*</span></label>
-                  <input value={form.name} onChange={e => handleNameChange(e.target.value)}
-                    className={ic} placeholder="e.g. Gold Premium" />
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Type Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={form.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    className={ic}
+                    placeholder="e.g. Gold Premium"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Code <span className="text-red-500">*</span></label>
-                  <input value={form.code} onChange={e => setF('code', e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g,''))}
-                    className={`${ic} font-mono`} placeholder="GOLD_PREMIUM" maxLength={20} />
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Code <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={form.code}
+                    onChange={(e) => setF('code', e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
+                    className={`${ic} font-mono`}
+                    placeholder="GOLD_PREMIUM"
+                    maxLength={20}
+                  />
                   <p className="text-xs text-gray-400 mt-1">Uppercase letters, numbers, underscores only</p>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
-                <textarea value={form.description} onChange={e => setF('description', e.target.value)}
-                  rows={2} className={`${ic} resize-none`} placeholder="Brief description of this contract tier..." />
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setF('description', e.target.value)}
+                  rows={2}
+                  className={`${ic} resize-none`}
+                  placeholder="Brief description of this contract tier..."
+                />
               </div>
 
               {/* Color + Active */}
@@ -322,13 +476,22 @@ export default function ContractTypeMasterPage() {
                 <div className="flex-1">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Brand Color</label>
                   <div className="flex items-center gap-2 flex-wrap">
-                    {COLORS.map(col => (
-                      <button key={col} type="button" onClick={() => setF('color', col)}
+                    {COLORS.map((col) => (
+                      <button
+                        key={col}
+                        type="button"
+                        onClick={() => setF('color', col)}
                         className={`w-8 h-8 rounded-lg transition-all shadow-sm ${form.color === col ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-105'}`}
-                        style={{ backgroundColor: col }} />
+                        style={{ backgroundColor: col }}
+                      />
                     ))}
-                    <input type="color" value={form.color} onChange={e => setF('color', e.target.value)}
-                      className="w-8 h-8 rounded-lg border border-gray-200 cursor-pointer" title="Custom color" />
+                    <input
+                      type="color"
+                      value={form.color}
+                      onChange={(e) => setF('color', e.target.value)}
+                      className="w-8 h-8 rounded-lg border border-gray-200 cursor-pointer"
+                      title="Custom color"
+                    />
                   </div>
                 </div>
                 <div>
@@ -336,8 +499,11 @@ export default function ContractTypeMasterPage() {
                   <label className="flex items-center gap-2 cursor-pointer">
                     <div
                       onClick={() => setF('isActive', !form.isActive)}
-                      className={`w-11 h-6 rounded-full transition-colors flex items-center px-0.5 ${form.isActive ? 'bg-green-500' : 'bg-gray-300'}`}>
-                      <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isActive ? 'translate-x-5' : 'translate-x-0'}`} />
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center px-0.5 ${form.isActive ? 'bg-green-500' : 'bg-gray-300'}`}
+                    >
+                      <div
+                        className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isActive ? 'translate-x-5' : 'translate-x-0'}`}
+                      />
                     </div>
                     <span className="text-sm font-medium text-gray-700">{form.isActive ? 'Active' : 'Inactive'}</span>
                   </label>
@@ -348,9 +514,17 @@ export default function ContractTypeMasterPage() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-semibold text-gray-700">SLA Targets</label>
-                  <button type="button" onClick={() => setForm(f => ({ ...f, slaConfig: JSON.parse(JSON.stringify(PRESET_SLA[f.baseType] || PRESET_SLA.CUSTOM)) }))}
-                    className="text-xs text-violet-600 hover:text-violet-800 font-medium">
-                    ↺ Reset to {BASE_TYPES.find(b => b.value === form.baseType)?.label || 'Custom'} defaults
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        slaConfig: JSON.parse(JSON.stringify(PRESET_SLA[f.baseType] || PRESET_SLA.CUSTOM)),
+                      }))
+                    }
+                    className="text-xs text-violet-600 hover:text-violet-800 font-medium"
+                  >
+                    ↺ Reset to {BASE_TYPES.find((b) => b.value === form.baseType)?.label || 'Custom'} defaults
                   </button>
                 </div>
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -364,32 +538,46 @@ export default function ContractTypeMasterPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {['P1','P2','P3','P4'].map(p => (
+                      {['P1', 'P2', 'P3', 'P4'].map((p) => (
                         <tr key={p} className="hover:bg-gray-50">
                           <td className="px-4 py-3">
                             <span className={`font-semibold text-sm ${SLA_COLORS[p]}`}>{SLA_LABELS[p]}</span>
                           </td>
                           <td className="px-4 py-3 text-center">
                             <label className="flex items-center justify-center cursor-pointer">
-                              <div onClick={() => setSLA(p, 'enabled', !form.slaConfig[p]?.enabled)}
-                                className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-colors ${form.slaConfig[p]?.enabled !== false ? 'bg-green-500' : 'bg-gray-300'}`}>
-                                <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${form.slaConfig[p]?.enabled !== false ? 'translate-x-5' : 'translate-x-0'}`} />
+                              <div
+                                onClick={() => setSLA(p, 'enabled', !form.slaConfig[p]?.enabled)}
+                                className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-colors ${form.slaConfig[p]?.enabled !== false ? 'bg-green-500' : 'bg-gray-300'}`}
+                              >
+                                <div
+                                  className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${form.slaConfig[p]?.enabled !== false ? 'translate-x-5' : 'translate-x-0'}`}
+                                />
                               </div>
                             </label>
                           </td>
-                          <td className={`px-4 py-3 text-center transition-opacity ${form.slaConfig[p]?.enabled === false ? 'opacity-30' : ''}`}>
-                            <input type="number" min="1"
+                          <td
+                            className={`px-4 py-3 text-center transition-opacity ${form.slaConfig[p]?.enabled === false ? 'opacity-30' : ''}`}
+                          >
+                            <input
+                              type="number"
+                              min="1"
                               disabled={form.slaConfig[p]?.enabled === false}
                               value={form.slaConfig[p]?.response ?? ''}
-                              onChange={e => setSLA(p, 'response', e.target.value)}
-                              className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-center focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed" />
+                              onChange={(e) => setSLA(p, 'response', e.target.value)}
+                              className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-center focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
+                            />
                           </td>
-                          <td className={`px-4 py-3 text-center transition-opacity ${form.slaConfig[p]?.enabled === false ? 'opacity-30' : ''}`}>
-                            <input type="number" min="1"
+                          <td
+                            className={`px-4 py-3 text-center transition-opacity ${form.slaConfig[p]?.enabled === false ? 'opacity-30' : ''}`}
+                          >
+                            <input
+                              type="number"
+                              min="1"
                               disabled={form.slaConfig[p]?.enabled === false}
                               value={form.slaConfig[p]?.resolution ?? ''}
-                              onChange={e => setSLA(p, 'resolution', e.target.value)}
-                              className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-center focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed" />
+                              onChange={(e) => setSLA(p, 'resolution', e.target.value)}
+                              className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-center focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
+                            />
                           </td>
                         </tr>
                       ))}
@@ -401,11 +589,17 @@ export default function ContractTypeMasterPage() {
 
             {/* Footer */}
             <div className="flex justify-end gap-3 px-7 py-5 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex-shrink-0">
-              <button onClick={() => setModal(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-100 font-medium">
+              <button
+                onClick={() => setModal(false)}
+                className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-100 font-medium"
+              >
                 Cancel
               </button>
-              <button onClick={handleSave} disabled={saving}
-                className="flex items-center gap-2 px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold disabled:opacity-60 transition-colors">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-2 px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold disabled:opacity-60 transition-colors"
+              >
                 💾 {saving ? 'Saving...' : editId ? 'Update Type' : 'Create Type'}
               </button>
             </div>

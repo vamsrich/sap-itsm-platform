@@ -21,8 +21,8 @@ interface AgentScore {
 const LEVEL_PRIORITY_SCORES: Record<string, Record<string, number>> = {
   P1: { L4: 25, L3: 20, L2: 10, L1: 5 },
   P2: { L4: 20, L3: 25, L2: 15, L1: 5 },
-  P3: { L4: 5,  L3: 10, L2: 25, L1: 20 },
-  P4: { L4: 5,  L3: 5,  L2: 20, L1: 25 },
+  P3: { L4: 5, L3: 10, L2: 25, L1: 20 },
+  P4: { L4: 5, L3: 5, L2: 20, L1: 25 },
 };
 
 export async function findMatchingRule(params: {
@@ -77,7 +77,7 @@ export async function scoreAgents(params: {
     where: { customerId },
     select: { agentId: true },
   });
-  const agentIds = customerAgents.map(ca => ca.agentId);
+  const agentIds = customerAgents.map((ca) => ca.agentId);
 
   if (agentIds.length === 0) return [];
 
@@ -101,18 +101,18 @@ export async function scoreAgents(params: {
     },
   });
 
-  const scores: AgentScore[] = agents.map(agent => {
+  const scores: AgentScore[] = agents.map((agent) => {
     // Module match (30 pts)
     let moduleMatch = 0;
     if (sapModuleId) {
-      const spec = agent.specializations.find(s => s.sapModuleId === sapModuleId);
+      const spec = agent.specializations.find((s) => s.sapModuleId === sapModuleId);
       if (spec) moduleMatch = 30;
     }
 
     // Sub-module match (20 pts)
     let subModuleMatch = 0;
     if (sapModuleId && sapSubModuleId) {
-      const spec = agent.specializations.find(s => s.sapModuleId === sapModuleId);
+      const spec = agent.specializations.find((s) => s.sapModuleId === sapModuleId);
       if (spec && spec.sapSubModuleIds.includes(sapSubModuleId)) subModuleMatch = 20;
     }
 
@@ -120,9 +120,14 @@ export async function scoreAgents(params: {
     let levelScore = 0;
     if (preferredLevel) {
       // Explicit preferred level from rule
-      levelScore = agent.level === preferredLevel ? 25 : (
-        Math.abs(['L1','L2','L3','L4'].indexOf(agent.level) - ['L1','L2','L3','L4'].indexOf(preferredLevel)) <= 1 ? 15 : 5
-      );
+      levelScore =
+        agent.level === preferredLevel
+          ? 25
+          : Math.abs(
+                ['L1', 'L2', 'L3', 'L4'].indexOf(agent.level) - ['L1', 'L2', 'L3', 'L4'].indexOf(preferredLevel),
+              ) <= 1
+            ? 15
+            : 5;
     } else {
       // Auto: use priority-based scoring
       levelScore = LEVEL_PRIORITY_SCORES[priority]?.[agent.level] || 10;
@@ -173,7 +178,7 @@ export async function roundRobinAgent(params: {
   });
 
   // Filter to available agents only, sort by workload
-  const available = scores.filter(s => s.status !== 'OFFLINE' && s.openTickets < s.maxConcurrent);
+  const available = scores.filter((s) => s.status !== 'OFFLINE' && s.openTickets < s.maxConcurrent);
   if (available.length === 0) return null;
 
   // Sort by open tickets ascending (least loaded first)

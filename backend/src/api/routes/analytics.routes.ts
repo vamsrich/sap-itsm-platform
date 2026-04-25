@@ -38,7 +38,10 @@ async function buildAnalyticsScope(req: any): Promise<{ where: any } | null> {
 router.get('/classification', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const scope = await buildAnalyticsScope(req);
-    if (!scope) { res.json({ success: true, data: [] }); return; }
+    if (!scope) {
+      res.json({ success: true, data: [] });
+      return;
+    }
 
     const { tenantId } = req.user!;
     const days = parseInt(req.query.days as string) || 30;
@@ -51,7 +54,9 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
       prisma.sAPModuleMaster.findMany({
         where: { tenantId, isActive: true },
         select: {
-          id: true, code: true, name: true,
+          id: true,
+          code: true,
+          name: true,
           subModules: { select: { id: true, code: true, name: true } },
           records: {
             where: baseWhere,
@@ -99,19 +104,22 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
         const total = records.length;
         const open = records.filter((r: any) => !['RESOLVED', 'CLOSED', 'CANCELLED'].includes(r.status)).length;
         const resolved = records.filter((r: any) => ['RESOLVED', 'CLOSED'].includes(r.status)).length;
-        const p1p2 = records.filter((r: any) => ['P1', 'P2'].includes(r.priority) && !['RESOLVED', 'CLOSED', 'CANCELLED'].includes(r.status)).length;
+        const p1p2 = records.filter(
+          (r: any) => ['P1', 'P2'].includes(r.priority) && !['RESOLVED', 'CLOSED', 'CANCELLED'].includes(r.status),
+        ).length;
         const incidents = records.filter((r: any) => r.recordType === 'INCIDENT').length;
 
         // Health signal: red = p1p2 > 2 or open > total*0.7, amber = open > total*0.4, green = otherwise
-        const health = p1p2 > 2 || open > total * 0.7 ? 'critical'
-          : open > total * 0.4 || p1p2 > 0 ? 'warning'
-          : 'healthy';
+        const health =
+          p1p2 > 2 || open > total * 0.7 ? 'critical' : open > total * 0.4 || p1p2 > 0 ? 'warning' : 'healthy';
 
         // Sub-module breakdown
-        const subBreakdown = m.subModules.map((sm: any) => {
-          const smRecords = records.filter((r: any) => r.sapSubModuleId === sm.id);
-          return { id: sm.id, code: sm.code, name: sm.name, count: smRecords.length };
-        }).filter((sm: any) => sm.count > 0);
+        const subBreakdown = m.subModules
+          .map((sm: any) => {
+            const smRecords = records.filter((r: any) => r.sapSubModuleId === sm.id);
+            return { id: sm.id, code: sm.code, name: sm.name, count: smRecords.length };
+          })
+          .filter((sm: any) => sm.count > 0);
 
         return {
           moduleId: m.id,
@@ -147,7 +155,9 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
       byPriority: byPriority.map((p: any) => ({ priority: p.priority, count: p._count.id })),
       byStatus: byStatus.map((s: any) => ({ status: s.status, count: s._count.id })),
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ── GET /analytics/patterns ────────────────────────────────────────────────────
@@ -155,7 +165,10 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
 router.get('/patterns', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const scope = await buildAnalyticsScope(req);
-    if (!scope) { res.json({ success: true, patterns: [] }); return; }
+    if (!scope) {
+      res.json({ success: true, patterns: [] });
+      return;
+    }
 
     const { tenantId } = req.user!;
     const days = parseInt(req.query.days as string) || 30;
@@ -176,12 +189,18 @@ router.get('/patterns', async (req: Request, res: Response, next: NextFunction) 
     const enriched = await Promise.all(
       modulePatterns.map(async (p: any) => {
         const [mod, subMod, samples, linked] = await Promise.all([
-          p.sapModuleId ? prisma.sAPModuleMaster.findUnique({
-            where: { id: p.sapModuleId }, select: { code: true, name: true },
-          }) : null,
-          p.sapSubModuleId ? prisma.sAPSubModuleMaster.findUnique({
-            where: { id: p.sapSubModuleId }, select: { code: true, name: true },
-          }) : null,
+          p.sapModuleId
+            ? prisma.sAPModuleMaster.findUnique({
+                where: { id: p.sapModuleId },
+                select: { code: true, name: true },
+              })
+            : null,
+          p.sapSubModuleId
+            ? prisma.sAPSubModuleMaster.findUnique({
+                where: { id: p.sapSubModuleId },
+                select: { code: true, name: true },
+              })
+            : null,
           // Sample 3 recent tickets for this pattern
           prisma.iTSMRecord.findMany({
             where: { ...baseWhere, sapModuleId: p.sapModuleId, sapSubModuleId: p.sapSubModuleId },
@@ -212,7 +231,7 @@ router.get('/patterns', async (req: Request, res: Response, next: NextFunction) 
           severity: p._count.id >= 8 ? 'high' : p._count.id >= 5 ? 'medium' : 'low',
           samples,
         };
-      })
+      }),
     );
 
     res.json({
@@ -222,7 +241,9 @@ router.get('/patterns', async (req: Request, res: Response, next: NextFunction) 
       totalPatterns: enriched.length,
       highSeverity: enriched.filter((p: any) => p.severity === 'high').length,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ── GET /analytics/root-cause ──────────────────────────────────────────────────
@@ -230,14 +251,18 @@ router.get('/patterns', async (req: Request, res: Response, next: NextFunction) 
 router.get('/root-cause', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const scope = await buildAnalyticsScope(req);
-    if (!scope) { res.json({ success: true, data: [] }); return; }
+    if (!scope) {
+      res.json({ success: true, data: [] });
+      return;
+    }
 
     const { tenantId } = req.user!;
     const days = parseInt(req.query.days as string) || 30;
     const since = new Date(Date.now() - days * 86400000);
 
     // Stalled tickets: open for more than 2 days, by module and status
-    const stalledByModule = await prisma.$queryRawUnsafe(`
+    const stalledByModule = await prisma.$queryRawUnsafe(
+      `
       SELECT
         m.code AS module_code,
         m.name AS module_name,
@@ -254,10 +279,14 @@ router.get('/root-cause', async (req: Request, res: Response, next: NextFunction
       GROUP BY m.code, m.name, r.status
       ORDER BY avg_hours_in_status DESC
       LIMIT 30
-    `, tenantId, since);
+    `,
+      tenantId,
+      since,
+    );
 
     // Top bottleneck agents (most tickets in PENDING > 24h)
-    const pendingByAgent = await prisma.$queryRawUnsafe(`
+    const pendingByAgent = await prisma.$queryRawUnsafe(
+      `
       SELECT
         u.first_name || ' ' || u.last_name AS agent_name,
         COUNT(*)::int AS pending_count,
@@ -271,7 +300,9 @@ router.get('/root-cause', async (req: Request, res: Response, next: NextFunction
       GROUP BY u.first_name, u.last_name
       ORDER BY pending_count DESC
       LIMIT 10
-    `, tenantId);
+    `,
+      tenantId,
+    );
 
     res.json({
       success: true,
@@ -279,7 +310,9 @@ router.get('/root-cause', async (req: Request, res: Response, next: NextFunction
       stalledByModule,
       pendingByAgent,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ── GET /analytics/knowledge-gaps ─────────────────────────────────────────────
@@ -287,7 +320,10 @@ router.get('/root-cause', async (req: Request, res: Response, next: NextFunction
 router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const scope = await buildAnalyticsScope(req);
-    if (!scope) { res.json({ success: true, gaps: [] }); return; }
+    if (!scope) {
+      res.json({ success: true, gaps: [] });
+      return;
+    }
 
     const { tenantId } = req.user!;
     const days = parseInt(req.query.days as string) || 60;
@@ -307,7 +343,8 @@ router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunc
       incidentGroups.map(async (g: any) => {
         const [mod, problemCount, avgResolution, unresolved] = await Promise.all([
           prisma.sAPModuleMaster.findUnique({
-            where: { id: g.sapModuleId }, select: { code: true, name: true },
+            where: { id: g.sapModuleId },
+            select: { code: true, name: true },
           }),
           // Check for Problem records
           prisma.iTSMRecord.count({
@@ -319,12 +356,18 @@ router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunc
             },
           }),
           // Avg resolution time for resolved in this combo
-          prisma.$queryRawUnsafe(`
+          prisma.$queryRawUnsafe(
+            `
             SELECT ROUND(AVG(EXTRACT(EPOCH FROM (resolved_at - created_at))/3600)::numeric, 1) as avg_hours
             FROM itsm_records
             WHERE tenant_id = $1 AND sap_module_id = $2 AND priority = $3
               AND record_type = 'INCIDENT' AND resolved_at IS NOT NULL AND created_at >= $4
-          `, tenantId, g.sapModuleId, g.priority, since),
+          `,
+            tenantId,
+            g.sapModuleId,
+            g.priority,
+            since,
+          ),
           // How many still unresolved
           prisma.iTSMRecord.count({
             where: {
@@ -349,13 +392,14 @@ router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunc
           hasProblemRecord: problemCount > 0,
           avgResolutionHours: avgHours ? Number(avgHours) : null,
           gapScore: Math.round(gapScore * 10) / 10,
-          recommendation: problemCount === 0 && g._count.id >= 5
-            ? 'Create Problem record — recurring pattern with no root-cause investigation'
-            : problemCount === 0
-            ? 'Consider KB article — no documented resolution path'
-            : 'Problem record exists — check if linked',
+          recommendation:
+            problemCount === 0 && g._count.id >= 5
+              ? 'Create Problem record — recurring pattern with no root-cause investigation'
+              : problemCount === 0
+                ? 'Consider KB article — no documented resolution path'
+                : 'Problem record exists — check if linked',
         };
-      })
+      }),
     );
 
     // Sort by gap score descending
@@ -368,7 +412,9 @@ router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunc
       totalGaps: gaps.length,
       criticalGaps: gaps.filter((g: any) => !g.hasProblemRecord && g.incidentCount >= 5).length,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ── GET /analytics/similar/:recordId ──────────────────────────────────────────
@@ -376,7 +422,10 @@ router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunc
 router.get('/similar/:recordId', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const scope = await buildAnalyticsScope(req);
-    if (!scope) { res.json({ success: true, similar: [] }); return; }
+    if (!scope) {
+      res.json({ success: true, similar: [] });
+      return;
+    }
 
     const { recordId } = req.params;
     const { tenantId } = req.user!;
@@ -385,12 +434,20 @@ router.get('/similar/:recordId', async (req: Request, res: Response, next: NextF
     const source = await prisma.iTSMRecord.findFirst({
       where: { id: recordId, tenantId },
       select: {
-        id: true, title: true, sapModuleId: true, sapSubModuleId: true,
-        recordType: true, priority: true, tags: true,
+        id: true,
+        title: true,
+        sapModuleId: true,
+        sapSubModuleId: true,
+        recordType: true,
+        priority: true,
+        tags: true,
       },
     });
 
-    if (!source) { res.status(404).json({ success: false, error: 'Record not found' }); return; }
+    if (!source) {
+      res.status(404).json({ success: false, error: 'Record not found' });
+      return;
+    }
 
     // Find similar: same module + sub-module, resolved, exclude self
     // Score: exact sub-module match = +3, same module = +2, same priority = +1, same type = +1
@@ -403,9 +460,17 @@ router.get('/similar/:recordId', async (req: Request, res: Response, next: NextF
         resolvedAt: { not: null },
       },
       select: {
-        id: true, recordNumber: true, title: true, priority: true,
-        status: true, recordType: true, sapModuleId: true, sapSubModuleId: true,
-        createdAt: true, resolvedAt: true, tags: true,
+        id: true,
+        recordNumber: true,
+        title: true,
+        priority: true,
+        status: true,
+        recordType: true,
+        sapModuleId: true,
+        sapSubModuleId: true,
+        createdAt: true,
+        resolvedAt: true,
+        tags: true,
         customer: { select: { companyName: true } },
         comments: {
           where: { internalFlag: false },
@@ -443,7 +508,9 @@ router.get('/similar/:recordId', async (req: Request, res: Response, next: NextF
       .map(({ comments, ...rest }: any) => rest);
 
     res.json({ success: true, sourceId: recordId, similar: top5 });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

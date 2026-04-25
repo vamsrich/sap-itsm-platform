@@ -6,11 +6,11 @@ import { AppError } from '../../utils/AppError';
 import { UserRole } from '@prisma/client';
 
 export interface JWTPayload {
-  sub: string;       // userId
+  sub: string; // userId
   tenantId: string;
   role: UserRole;
   email: string;
-  customerId?: string | null;   // set for COMPANY_ADMIN and USER — re-fetched from DB
+  customerId?: string | null; // set for COMPANY_ADMIN and USER — re-fetched from DB
   iat?: number;
   exp?: number;
 }
@@ -29,11 +29,7 @@ declare global {
  * IMPORTANT: customerId is re-fetched from DB on every request
  * to prevent stale values if a user's company assignment changes.
  */
-export const verifyJWT = async (
-  req: Request,
-  _res: Response,
-  next: NextFunction
-): Promise<void> => {
+export const verifyJWT = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -82,13 +78,7 @@ export const enforceRole = (...allowedRoles: UserRole[]) => {
       return next(new AppError('Unauthorized', 401, 'UNAUTHORIZED'));
     }
     if (!allowedRoles.includes(req.user.role)) {
-      return next(
-        new AppError(
-          `Access denied. Required roles: ${allowedRoles.join(', ')}`,
-          403,
-          'FORBIDDEN'
-        )
-      );
+      return next(new AppError(`Access denied. Required roles: ${allowedRoles.join(', ')}`, 403, 'FORBIDDEN'));
     }
     next();
   };
@@ -98,11 +88,7 @@ export const enforceRole = (...allowedRoles: UserRole[]) => {
  * Enforce tenant scope on all queries.
  * Super admins can specify X-Tenant-ID header; others are locked to their tenant.
  */
-export const enforceTenantScope = (
-  req: Request,
-  _res: Response,
-  next: NextFunction
-): void => {
+export const enforceTenantScope = (req: Request, _res: Response, next: NextFunction): void => {
   if (!req.user) {
     return next(new AppError('Unauthorized', 401, 'UNAUTHORIZED'));
   }
@@ -118,11 +104,7 @@ export const enforceTenantScope = (
 /**
  * Optional auth — attach user if token present, but don't fail if not.
  */
-export const optionalJWT = async (
-  req: Request,
-  _res: Response,
-  next: NextFunction
-): Promise<void> => {
+export const optionalJWT = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {

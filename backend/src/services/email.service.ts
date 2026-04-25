@@ -245,13 +245,23 @@ export async function processEmailEvent(job: {
         });
       }
       for (const r of recipients) {
-        await sendEmail({ templateKey: 'RECORD_CREATED', recipient: r.email, variables: { ...baseVars, ...r.extraVars }, recordId });
+        await sendEmail({
+          templateKey: 'RECORD_CREATED',
+          recipient: r.email,
+          variables: { ...baseVars, ...r.extraVars },
+          recordId,
+        });
       }
       break;
 
     case 'STATUS_CHANGED':
       if (record.createdBy.email) {
-        await sendEmail({ templateKey: 'STATUS_CHANGED', recipient: record.createdBy.email, variables: { ...baseVars, oldStatus, newStatus }, recordId });
+        await sendEmail({
+          templateKey: 'STATUS_CHANGED',
+          recipient: record.createdBy.email,
+          variables: { ...baseVars, oldStatus, newStatus },
+          recordId,
+        });
       }
       break;
 

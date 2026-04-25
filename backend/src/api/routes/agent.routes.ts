@@ -28,7 +28,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     const where: any = {
       user: { tenantId },
-      ...(req.query.level  && { level:  req.query.level  as any }),
+      ...(req.query.level && { level: req.query.level as any }),
       ...(req.query.status && { status: req.query.status as any }),
       ...(req.query.agentType && { agentType: req.query.agentType as any }),
       // Filter by customer assignment if customerId is provided
@@ -36,18 +36,22 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         customerAgents: { some: { customerId: req.query.customerId as string } },
       }),
       // COMPANY_ADMIN: scope to agents in their customerAgents OR their assigned PM
-      ...(isCompanyAdmin && companyCustomerId && !req.query.customerId && {
-        OR: [
-          { customerAgents: { some: { customerId: companyCustomerId } } },
-          // Also include PM even though they're not in customerAgents
-          ...(companyPMAgentId ? [{ id: companyPMAgentId }] : []),
-        ],
-      }),
+      ...(isCompanyAdmin &&
+        companyCustomerId &&
+        !req.query.customerId && {
+          OR: [
+            { customerAgents: { some: { customerId: companyCustomerId } } },
+            // Also include PM even though they're not in customerAgents
+            ...(companyPMAgentId ? [{ id: companyPMAgentId }] : []),
+          ],
+        }),
     };
 
     const [agents, total] = await Promise.all([
       prisma.agent.findMany({
-        where, skip, take,
+        where,
+        skip,
+        take,
         include: {
           user: { select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true } },
           _count: { select: { assignments: { where: { status: { in: ['NEW', 'OPEN', 'IN_PROGRESS'] } } } } },
@@ -59,7 +63,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     ]);
 
     res.json({ success: true, ...buildPaginatedResult(agents, total, page, limit) });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
@@ -69,12 +75,28 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
       include: {
         user: { select: { id: true, firstName: true, lastName: true, email: true } },
         _count: { select: { assignments: true, timeEntries: true } },
-        specializations: { include: { sapModule: { select: { id: true, code: true, name: true, subModules: { select: { id: true, code: true, name: true }, where: { isActive: true } } } } } },
+        specializations: {
+          include: {
+            sapModule: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                subModules: { select: { id: true, code: true, name: true }, where: { isActive: true } },
+              },
+            },
+          },
+        },
       },
     });
-    if (!agent) { res.status(404).json({ success: false, error: 'Agent not found' }); return; }
+    if (!agent) {
+      res.status(404).json({ success: false, error: 'Agent not found' });
+      return;
+    }
     res.json({ success: true, agent });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.post('/', enforceRole('SUPER_ADMIN'), async (req: Request, res: Response, next: NextFunction) => {
@@ -94,7 +116,9 @@ router.post('/', enforceRole('SUPER_ADMIN'), async (req: Request, res: Response,
     });
     await auditLog({ ...auditFromRequest(req), action: 'CREATE', entityType: 'Agent', entityId: agent.id });
     res.status(201).json({ success: true, agent });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /agents/link-user — fix an existing user who was created with wrong role
@@ -102,7 +126,10 @@ router.post('/', enforceRole('SUPER_ADMIN'), async (req: Request, res: Response,
 router.post('/link-user', enforceRole('SUPER_ADMIN'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, agentType, specialization, level, timezone, status, metadata } = req.body;
-    if (!email) { res.status(400).json({ success: false, error: 'Email is required' }); return; }
+    if (!email) {
+      res.status(400).json({ success: false, error: 'Email is required' });
+      return;
+    }
 
     const existingUser = await prisma.user.findFirst({
       where: { email: email.toLowerCase().trim(), tenantId: req.user!.tenantId },
@@ -127,43 +154,51 @@ router.post('/link-user', enforceRole('SUPER_ADMIN'), async (req: Request, res: 
           data: {
             agentType: agentType || existingUser.agent.agentType,
             ...(specialization && { specialization }),
-            ...(level    && { level }),
+            ...(level && { level }),
             ...(timezone && { timezone }),
-            ...(status   && { status }),
+            ...(status && { status }),
             ...(metadata && { metadata }),
           },
         }),
       ]);
     } else {
-    [, agent] = await prisma.$transaction([
-      prisma.user.update({
-        where: { id: existingUser.id },
-        data: { role: correctRole as any },
-      }),
-      prisma.agent.create({
-        data: {
-          userId:         existingUser.id,
-          agentType:      agentType || 'AGENT',
-          specialization: specialization || 'General',
-          level:          level    || 'L1',
-          timezone:       timezone || 'IST',
-          maxConcurrent:  5,
-          status:         status   || 'AVAILABLE',
-          metadata:       metadata || {},
-        },
-      }),
-    ]);
+      [, agent] = await prisma.$transaction([
+        prisma.user.update({
+          where: { id: existingUser.id },
+          data: { role: correctRole as any },
+        }),
+        prisma.agent.create({
+          data: {
+            userId: existingUser.id,
+            agentType: agentType || 'AGENT',
+            specialization: specialization || 'General',
+            level: level || 'L1',
+            timezone: timezone || 'IST',
+            maxConcurrent: 5,
+            status: status || 'AVAILABLE',
+            metadata: metadata || {},
+          },
+        }),
+      ]);
     }
 
-    await auditLog({ ...auditFromRequest(req), action: 'UPDATE', entityType: 'Agent', entityId: agent.id,
-      newValues: { linkedUserId: existingUser.id, fixedRole: correctRole } });
+    await auditLog({
+      ...auditFromRequest(req),
+      action: 'UPDATE',
+      entityType: 'Agent',
+      entityId: agent.id,
+      newValues: { linkedUserId: existingUser.id, fixedRole: correctRole },
+    });
 
     res.status(201).json({
-      success: true, agent,
+      success: true,
+      agent,
       fixedRole: correctRole,
       userName: existingUser.firstName + ' ' + existingUser.lastName,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.patch('/:id', enforceRole('SUPER_ADMIN'), async (req: Request, res: Response, next: NextFunction) => {
@@ -177,7 +212,9 @@ router.patch('/:id', enforceRole('SUPER_ADMIN'), async (req: Request, res: Respo
       data,
     });
     res.json({ success: true, updated: agent.count });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // DELETE /agents/:id — removes agent record AND the linked user account
@@ -187,7 +224,10 @@ router.delete('/:id', enforceRole('SUPER_ADMIN'), async (req: Request, res: Resp
       where: { id: req.params.id, user: { tenantId: req.user!.tenantId } },
       include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
     });
-    if (!agent) { res.status(404).json({ success: false, error: 'Agent not found' }); return; }
+    if (!agent) {
+      res.status(404).json({ success: false, error: 'Agent not found' });
+      return;
+    }
 
     // Delete agent record first (FK), then the user account
     await prisma.$transaction([
@@ -204,33 +244,47 @@ router.delete('/:id', enforceRole('SUPER_ADMIN'), async (req: Request, res: Resp
     });
 
     res.json({ success: true, message: `${agent.user?.firstName} ${agent.user?.lastName} removed` });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // PUT /agents/:id/specializations — replace all specializations
-router.put('/:id/specializations', enforceRole('SUPER_ADMIN'), async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const agentId = req.params.id;
-    const specs: Array<{ sapModuleId: string; sapSubModuleIds: string[] }> = req.body.specializations || [];
+router.put(
+  '/:id/specializations',
+  enforceRole('SUPER_ADMIN'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const agentId = req.params.id;
+      const specs: Array<{ sapModuleId: string; sapSubModuleIds: string[] }> = req.body.specializations || [];
 
-    // Delete existing
-    await prisma.agentSpecialization.deleteMany({ where: { agentId } });
+      // Delete existing
+      await prisma.agentSpecialization.deleteMany({ where: { agentId } });
 
-    // Create new
-    if (specs.length > 0) {
-      await prisma.agentSpecialization.createMany({
-        data: specs.map(s => ({ agentId, sapModuleId: s.sapModuleId, sapSubModuleIds: s.sapSubModuleIds || [] })),
+      // Create new
+      if (specs.length > 0) {
+        await prisma.agentSpecialization.createMany({
+          data: specs.map((s) => ({ agentId, sapModuleId: s.sapModuleId, sapSubModuleIds: s.sapSubModuleIds || [] })),
+        });
+      }
+
+      const updated = await prisma.agentSpecialization.findMany({
+        where: { agentId },
+        include: { sapModule: { select: { id: true, code: true, name: true } } },
       });
+
+      await auditLog({
+        ...auditFromRequest(req),
+        action: 'UPDATE',
+        entityType: 'Agent',
+        entityId: agentId,
+        newValues: { specializations: specs.map((s) => s.sapModuleId) },
+      });
+      res.json({ success: true, specializations: updated });
+    } catch (err) {
+      next(err);
     }
-
-    const updated = await prisma.agentSpecialization.findMany({
-      where: { agentId },
-      include: { sapModule: { select: { id: true, code: true, name: true } } },
-    });
-
-    await auditLog({ ...auditFromRequest(req), action: 'UPDATE', entityType: 'Agent', entityId: agentId, newValues: { specializations: specs.map(s => s.sapModuleId) } });
-    res.json({ success: true, specializations: updated });
-  } catch (err) { next(err); }
-});
+  },
+);
 
 export default router;

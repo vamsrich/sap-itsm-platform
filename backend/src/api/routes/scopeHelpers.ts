@@ -17,5 +17,5 @@ export async function resolveManagedCustomerIds(agentId: string, tenantId: strin
     where: { projectManagerAgentId: agentId, tenantId },
     select: { id: true },
   });
-  return customers.map(c => c.id);
+  return customers.map((c) => c.id);
 }

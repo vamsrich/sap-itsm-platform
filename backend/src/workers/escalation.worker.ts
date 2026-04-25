@@ -13,7 +13,7 @@ export function startEscalationWorker(): void {
         await processAutoEscalation();
       }
     },
-    { connection: bullConnection, concurrency: 2 }
+    { connection: bullConnection, concurrency: 2 },
   );
 
   const renewalWorker = new Worker(
@@ -23,21 +23,17 @@ export function startEscalationWorker(): void {
         await processContractRenewals();
       }
     },
-    { connection: bullConnection, concurrency: 1 }
+    { connection: bullConnection, concurrency: 1 },
   );
 
   // Every 5 minutes
-  escalationQueue.add(
-    'auto-escalate',
-    {},
-    { repeat: { every: 5 * 60 * 1000 }, jobId: 'escalation-recurring' }
-  );
+  escalationQueue.add('auto-escalate', {}, { repeat: { every: 5 * 60 * 1000 }, jobId: 'escalation-recurring' });
 
   // Every 24 hours (replaces cron which is not supported in this BullMQ version)
   contractRenewalQueue.add(
     'check-renewals',
     {},
-    { repeat: { every: 24 * 60 * 60 * 1000 }, jobId: 'contract-renewal-daily' }
+    { repeat: { every: 24 * 60 * 60 * 1000 }, jobId: 'contract-renewal-daily' },
   );
 
   escalationWorker.on('failed', (job, err) => logger.error('Escalation job failed:', err));

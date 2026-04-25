@@ -31,41 +31,50 @@ import analyticsRoutes from './api/routes/analytics.routes';
 const app = express();
 
 // ── Security ──────────────────────────────────────────────────────────────────
-app.use(helmet({
-  contentSecurityPolicy: true,
-  crossOriginEmbedderPolicy: false,
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: true,
+    crossOriginEmbedderPolicy: false,
+  }),
+);
 
-app.use(cors({
-  origin: (origin, callback) => {
-    const allowed = (process.env.CORS_ORIGINS || '*').split(',').map(o => o.trim());
-    if (allowed.includes('*')) {
-      callback(null, origin || true);
-    } else if (!origin || allowed.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-ID'],
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      const allowed = (process.env.CORS_ORIGINS || '*').split(',').map((o) => o.trim());
+      if (allowed.includes('*')) {
+        callback(null, origin || true);
+      } else if (!origin || allowed.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-ID'],
+  }),
+);
 
 // ── Rate Limiting ─────────────────────────────────────────────────────────────
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 500,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later.' },
-}));
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 500,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' },
+  }),
+);
 
-app.use('/api/auth/login', rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { error: 'Too many login attempts. Please wait 15 minutes.' },
-}));
+app.use(
+  '/api/auth/login',
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: 'Too many login attempts. Please wait 15 minutes.' },
+  }),
+);
 
 // ── Body Parsing ──────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
@@ -131,7 +140,8 @@ app.post('/admin/fix-record-customers', async (_req, res) => {
 app.post('/admin/seed-notification-rules', async (_req, res) => {
   try {
     const { prisma } = await import('./config/database');
-    const { seedDefaultNotificationRules, seedEmailTemplates } = await import('./services/notifications/notification.service');
+    const { seedDefaultNotificationRules, seedEmailTemplates } =
+      await import('./services/notifications/notification.service');
     const tenants = await prisma.tenant.findMany({ select: { id: true, name: true } });
     const results: any[] = [];
     for (const t of tenants) {
@@ -158,12 +168,15 @@ app.post('/admin/seed', async (_req, res) => {
   }
 });
 
-
 app.post('/admin/ams-seed', async (_req, res) => {
   try {
     const { seedAmsData } = await import('./ams-seed');
     await seedAmsData();
-    res.json({ success: true, message: 'AMS seed complete — GlobalManufacturing AG data loaded with 82 realistic tickets across FICO, MM, SD, PP' });
+    res.json({
+      success: true,
+      message:
+        'AMS seed complete — GlobalManufacturing AG data loaded with 82 realistic tickets across FICO, MM, SD, PP',
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

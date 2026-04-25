@@ -16,29 +16,49 @@ export default function RecordsPage() {
   const navigate = useNavigate();
 
   const [filters, setFilters] = useState<RecordFilters>({
-    page: 1, limit: 20, sortBy: 'createdAt', sortOrder: 'desc',
+    page: 1,
+    limit: 20,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
   });
 
   const handleExportCSV = () => {
     const records = data?.data || [];
     if (records.length === 0) return;
-    const headers = ['Record #','Type','Title','Priority','Status','Customer','Assigned Agent','Created By','SAP Module','Created','Updated'];
+    const headers = [
+      'Record #',
+      'Type',
+      'Title',
+      'Priority',
+      'Status',
+      'Customer',
+      'Assigned Agent',
+      'Created By',
+      'SAP Module',
+      'Created',
+      'Updated',
+    ];
     const rows = records.map((r: any) => [
-      r.recordNumber, r.recordType, `"${(r.title || '').replace(/"/g, '""')}"`,
-      r.priority, r.status,
-      r.customer?.companyName || '', 
+      r.recordNumber,
+      r.recordType,
+      `"${(r.title || '').replace(/"/g, '""')}"`,
+      r.priority,
+      r.status,
+      r.customer?.companyName || '',
       r.assignedAgent ? `${r.assignedAgent.user?.firstName} ${r.assignedAgent.user?.lastName}` : '',
       r.createdBy ? `${r.createdBy.firstName} ${r.createdBy.lastName}` : '',
       r.sapModule ? `${r.sapModule.code} - ${r.sapModule.name}` : '',
       new Date(r.createdAt).toLocaleDateString(),
       new Date(r.updatedAt).toLocaleDateString(),
     ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `tickets-export-${new Date().toISOString().slice(0,10)}.csv`;
-    a.click(); URL.revokeObjectURL(url);
+    a.href = url;
+    a.download = `tickets-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -57,8 +77,7 @@ export default function RecordsPage() {
     setSearch('');
   };
 
-  const activeFilterCount = [filters.recordType, filters.status, filters.priority]
-    .filter(Boolean).length;
+  const activeFilterCount = [filters.recordType, filters.status, filters.priority].filter(Boolean).length;
 
   const columns: Column<any>[] = [
     {
@@ -98,24 +117,30 @@ export default function RecordsPage() {
     {
       key: 'sla',
       header: 'SLA',
-      render: (row) => row.slaTracking ? (
-        <SLABadge
-          breachResponse={row.slaTracking.breachResponse}
-          breachResolution={row.slaTracking.breachResolution}
-          resolutionDeadline={row.slaTracking.resolutionDeadline}
-          compact
-        />
-      ) : <span className="text-xs text-gray-300">—</span>,
+      render: (row) =>
+        row.slaTracking ? (
+          <SLABadge
+            breachResponse={row.slaTracking.breachResponse}
+            breachResolution={row.slaTracking.breachResolution}
+            resolutionDeadline={row.slaTracking.resolutionDeadline}
+            compact
+          />
+        ) : (
+          <span className="text-xs text-gray-300">—</span>
+        ),
       className: 'w-32',
     },
     {
       key: 'assignedAgent',
       header: 'Assigned',
-      render: (row) => row.assignedAgent ? (
-        <span className="text-sm text-gray-700">
-          {row.assignedAgent.user.firstName} {row.assignedAgent.user.lastName}
-        </span>
-      ) : <span className="text-xs text-gray-300">Unassigned</span>,
+      render: (row) =>
+        row.assignedAgent ? (
+          <span className="text-sm text-gray-700">
+            {row.assignedAgent.user.firstName} {row.assignedAgent.user.lastName}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-300">Unassigned</span>
+        ),
       className: 'w-36',
     },
     {
@@ -137,9 +162,12 @@ export default function RecordsPage() {
         subtitle={data ? `${data.pagination.total} total records` : ''}
         actions={
           <div className="flex gap-2">
-            <button onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-xl text-sm font-medium">
-              <Download className="w-4 h-4"/>Export CSV
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-xl text-sm font-medium"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
             </button>
             <Button onClick={() => navigate('/records/new')}>
               <Plus className="w-4 h-4" />
@@ -155,12 +183,18 @@ export default function RecordsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setFilters((f) => ({ ...f, page: 1 })); }}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setFilters((f) => ({ ...f, page: 1 }));
+            }}
             placeholder="Search by title, number, description…"
             className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
               <X className="w-4 h-4" />
             </button>
           )}
@@ -176,10 +210,18 @@ export default function RecordsPage() {
             }`}
           >
             <Filter className="w-4 h-4" />
-            Filters {activeFilterCount > 0 && <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{activeFilterCount}</span>}
+            Filters{' '}
+            {activeFilterCount > 0 && (
+              <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
           </button>
           {activeFilterCount > 0 && (
-            <button onClick={clearFilters} className="px-3 py-2.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50">
+            <button
+              onClick={clearFilters}
+              className="px-3 py-2.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50"
+            >
               Clear
             </button>
           )}
@@ -196,7 +238,11 @@ export default function RecordsPage() {
               onChange={(e) => setFilter('recordType', e.target.value)}
               className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
-              {TYPE_OPTIONS.map((o) => <option key={o} value={o}>{o || 'All Types'}</option>)}
+              {TYPE_OPTIONS.map((o) => (
+                <option key={o} value={o}>
+                  {o || 'All Types'}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -206,7 +252,11 @@ export default function RecordsPage() {
               onChange={(e) => setFilter('status', e.target.value)}
               className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
-              {STATUS_OPTIONS.map((o) => <option key={o} value={o}>{o.replace('_', ' ') || 'All Statuses'}</option>)}
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o} value={o}>
+                  {o.replace('_', ' ') || 'All Statuses'}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -216,7 +266,11 @@ export default function RecordsPage() {
               onChange={(e) => setFilter('priority', e.target.value)}
               className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
-              {PRIORITY_OPTIONS.map((o) => <option key={o} value={o}>{o || 'All Priorities'}</option>)}
+              {PRIORITY_OPTIONS.map((o) => (
+                <option key={o} value={o}>
+                  {o || 'All Priorities'}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -247,9 +301,7 @@ export default function RecordsPage() {
         onRowClick={(r) => navigate(`/records/${r.id}`)}
         emptyMessage="No tickets found. Create your first ticket to get started."
         pagination={
-          data?.pagination
-            ? { ...data.pagination, onPage: (p) => setFilters((f) => ({ ...f, page: p })) }
-            : undefined
+          data?.pagination ? { ...data.pagination, onPage: (p) => setFilters((f) => ({ ...f, page: p })) } : undefined
         }
       />
     </div>

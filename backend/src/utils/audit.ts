@@ -50,7 +50,7 @@ export function auditFromRequest(req: Request): Partial<AuditParams> {
 
 export function diffObjects(
   oldObj: Record<string, unknown>,
-  newObj: Record<string, unknown>
+  newObj: Record<string, unknown>,
 ): { old: Record<string, unknown>; new: Record<string, unknown> } {
   const changed: { old: Record<string, unknown>; new: Record<string, unknown> } = { old: {}, new: {} };
   const allKeys = new Set([...Object.keys(oldObj), ...Object.keys(newObj)]);

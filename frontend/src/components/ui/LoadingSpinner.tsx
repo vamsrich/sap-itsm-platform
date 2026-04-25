@@ -1,7 +1,11 @@
 import React from 'react';
 
 // ── LoadingSpinner ────────────────────────────────────────────
-interface SpinnerProps { size?: 'sm' | 'md' | 'lg'; fullscreen?: boolean; label?: string; }
+interface SpinnerProps {
+  size?: 'sm' | 'md' | 'lg';
+  fullscreen?: boolean;
+  label?: string;
+}
 export function LoadingSpinner({ size = 'md', fullscreen, label }: SpinnerProps) {
   const sz = { sm: 'w-4 h-4', md: 'w-8 h-8', lg: 'w-12 h-12' }[size];
   const spinner = (
@@ -11,23 +15,24 @@ export function LoadingSpinner({ size = 'md', fullscreen, label }: SpinnerProps)
     </div>
   );
   if (fullscreen) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
-        {spinner}
-      </div>
-    );
+    return <div className="fixed inset-0 flex items-center justify-center bg-white z-50">{spinner}</div>;
   }
   return <div className="flex items-center justify-center p-8">{spinner}</div>;
 }
 
 // ── ErrorBoundary ─────────────────────────────────────────────
-interface EBState { hasError: boolean; error?: Error; }
+interface EBState {
+  hasError: boolean;
+  error?: Error;
+}
 export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, EBState> {
   constructor(props: any) {
     super(props);
     this.state = { hasError: false };
   }
-  static getDerivedStateFromError(error: Error): EBState { return { hasError: true, error }; }
+  static getDerivedStateFromError(error: Error): EBState {
+    return { hasError: true, error };
+  }
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, info);
   }
@@ -56,8 +61,15 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
 }
 
 // ── EmptyState ────────────────────────────────────────────────
-export function EmptyState({ icon, title, message, action }: {
-  icon?: React.ReactNode; title: string; message?: string;
+export function EmptyState({
+  icon,
+  title,
+  message,
+  action,
+}: {
+  icon?: React.ReactNode;
+  title: string;
+  message?: string;
   action?: { label: string; onClick: () => void };
 }) {
   return (

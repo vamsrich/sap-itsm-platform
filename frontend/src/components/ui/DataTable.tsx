@@ -29,7 +29,13 @@ interface DataTableProps<T> {
 }
 
 export function DataTable<T>({
-  columns, data, loading, keyExtractor, onRowClick, pagination, emptyMessage
+  columns,
+  data,
+  loading,
+  keyExtractor,
+  onRowClick,
+  pagination,
+  emptyMessage,
 }: DataTableProps<T>) {
   if (loading) return <LoadingSpinner label="Loading data…" />;
 
@@ -79,17 +85,33 @@ export function DataTable<T>({
       {pagination && pagination.total > 0 && (
         <div className="flex items-center justify-between px-2 py-3">
           <p className="text-sm text-gray-500">
-            Showing {((pagination.page - 1) * pagination.limit) + 1}–
+            Showing {(pagination.page - 1) * pagination.limit + 1}–
             {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
           </p>
           <div className="flex items-center gap-1">
-            <PageBtn icon={<ChevronsLeft className="w-4 h-4" />} onClick={() => pagination.onPage(1)} disabled={!pagination.hasPrev} />
-            <PageBtn icon={<ChevronLeft className="w-4 h-4" />} onClick={() => pagination.onPage(pagination.page - 1)} disabled={!pagination.hasPrev} />
+            <PageBtn
+              icon={<ChevronsLeft className="w-4 h-4" />}
+              onClick={() => pagination.onPage(1)}
+              disabled={!pagination.hasPrev}
+            />
+            <PageBtn
+              icon={<ChevronLeft className="w-4 h-4" />}
+              onClick={() => pagination.onPage(pagination.page - 1)}
+              disabled={!pagination.hasPrev}
+            />
             <span className="px-3 py-1 text-sm font-medium text-gray-700">
               {pagination.page} / {pagination.totalPages}
             </span>
-            <PageBtn icon={<ChevronRight className="w-4 h-4" />} onClick={() => pagination.onPage(pagination.page + 1)} disabled={!pagination.hasNext} />
-            <PageBtn icon={<ChevronsRight className="w-4 h-4" />} onClick={() => pagination.onPage(pagination.totalPages)} disabled={!pagination.hasNext} />
+            <PageBtn
+              icon={<ChevronRight className="w-4 h-4" />}
+              onClick={() => pagination.onPage(pagination.page + 1)}
+              disabled={!pagination.hasNext}
+            />
+            <PageBtn
+              icon={<ChevronsRight className="w-4 h-4" />}
+              onClick={() => pagination.onPage(pagination.totalPages)}
+              disabled={!pagination.hasNext}
+            />
           </div>
         </div>
       )}

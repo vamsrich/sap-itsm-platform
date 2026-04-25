@@ -1,7 +1,9 @@
 import React from 'react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string; error?: string; hint?: string;
+  label?: string;
+  error?: string;
+  hint?: string;
 }
 export function Input({ label, error, hint, className = '', ...props }: InputProps) {
   return (
@@ -21,7 +23,9 @@ export function Input({ label, error, hint, className = '', ...props }: InputPro
 }
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string; error?: string; options: { value: string; label: string }[];
+  label?: string;
+  error?: string;
+  options: { value: string; label: string }[];
 }
 export function Select({ label, error, options, className = '', ...props }: SelectProps) {
   return (
@@ -34,7 +38,11 @@ export function Select({ label, error, options, className = '', ...props }: Sele
           ${error ? 'border-red-400' : 'border-gray-300'} ${className}`}
         {...props}
       >
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
       </select>
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
@@ -42,7 +50,8 @@ export function Select({ label, error, options, className = '', ...props }: Sele
 }
 
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label?: string; error?: string;
+  label?: string;
+  error?: string;
 }
 export function Textarea({ label, error, className = '', ...props }: TextareaProps) {
   return (
@@ -60,8 +69,14 @@ export function Textarea({ label, error, className = '', ...props }: TextareaPro
 }
 
 // ── Page Header ───────────────────────────────────────────────
-export function PageHeader({ title, subtitle, actions }: {
-  title: string; subtitle?: string; actions?: React.ReactNode;
+export function PageHeader({
+  title,
+  subtitle,
+  actions,
+}: {
+  title: string;
+  subtitle?: string;
+  actions?: React.ReactNode;
 }) {
   return (
     <div className="flex items-start justify-between mb-6">
@@ -75,24 +90,29 @@ export function PageHeader({ title, subtitle, actions }: {
 }
 
 // ── Stat Card ─────────────────────────────────────────────────
-export function StatCard({ label, value, sub, icon, color = 'blue' }: {
-  label: string; value: string | number; sub?: string;
-  icon?: React.ReactNode; color?: 'blue' | 'red' | 'green' | 'orange' | 'purple';
+export function StatCard({
+  label,
+  value,
+  sub,
+  icon,
+  color = 'blue',
+}: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  icon?: React.ReactNode;
+  color?: 'blue' | 'red' | 'green' | 'orange' | 'purple';
 }) {
   const colors = {
-    blue:   'bg-blue-50 text-blue-600',
-    red:    'bg-red-50 text-red-600',
-    green:  'bg-green-50 text-green-600',
+    blue: 'bg-blue-50 text-blue-600',
+    red: 'bg-red-50 text-red-600',
+    green: 'bg-green-50 text-green-600',
     orange: 'bg-orange-50 text-orange-600',
     purple: 'bg-purple-50 text-purple-600',
   };
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
-      {icon && (
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${colors[color]}`}>
-          {icon}
-        </div>
-      )}
+      {icon && <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${colors[color]}`}>{icon}</div>}
       <div>
         <p className="text-sm text-gray-500 font-medium">{label}</p>
         <p className="text-2xl font-bold text-gray-900 leading-tight">{value}</p>
@@ -103,8 +123,16 @@ export function StatCard({ label, value, sub, icon, color = 'blue' }: {
 }
 
 // ── Card ──────────────────────────────────────────────────────
-export function Card({ children, className = '', title, actions }: {
-  children: React.ReactNode; className?: string; title?: string; actions?: React.ReactNode;
+export function Card({
+  children,
+  className = '',
+  title,
+  actions,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  title?: string;
+  actions?: React.ReactNode;
 }) {
   return (
     <div className={`bg-white rounded-xl border border-gray-200 ${className}`}>
@@ -125,14 +153,23 @@ interface BtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: 'sm' | 'md';
   loading?: boolean;
 }
-export function Button({ variant = 'primary', size = 'md', loading, children, className = '', disabled, ...props }: BtnProps) {
-  const base = 'inline-flex items-center gap-2 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+export function Button({
+  variant = 'primary',
+  size = 'md',
+  loading,
+  children,
+  className = '',
+  disabled,
+  ...props
+}: BtnProps) {
+  const base =
+    'inline-flex items-center gap-2 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
   const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm' };
   const variants = {
-    primary:   'bg-blue-600 text-white hover:bg-blue-700',
+    primary: 'bg-blue-600 text-white hover:bg-blue-700',
     secondary: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-    danger:    'bg-red-600 text-white hover:bg-red-700',
-    ghost:     'text-gray-600 hover:bg-gray-100',
+    danger: 'bg-red-600 text-white hover:bg-red-700',
+    ghost: 'text-gray-600 hover:bg-gray-100',
   };
   return (
     <button

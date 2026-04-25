@@ -15,7 +15,7 @@ export function startSLAWorker(): void {
     {
       connection: bullConnection,
       concurrency: 1,
-    }
+    },
   );
 
   worker.on('completed', (job) => {
@@ -32,7 +32,7 @@ export function startSLAWorker(): void {
     {
       repeat: { every: 60 * 1000 },
       jobId: 'sla-recurring-check',
-    }
+    },
   );
 
   logger.info('✅ SLA Worker started — checking every 60s');

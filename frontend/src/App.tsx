@@ -8,37 +8,37 @@ import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 // Lazy-loaded pages
-const LoginPage           = lazy(() => import('./pages/LoginPage'));
-const DashboardPage       = lazy(() => import('./pages/DashboardPage'));
-const RecordsPage         = lazy(() => import('./pages/RecordsPage'));
-const RecordDetailPage    = lazy(() => import('./pages/RecordDetailPage'));
-const NewRecordPage       = lazy(() => import('./pages/NewRecordPage'));
-const UsersPage           = lazy(() => import('./pages/UsersPage'));
-const AgentsPage          = lazy(() => import('./pages/AgentsPage'));
-const ProfilePage         = lazy(() => import('./pages/ProfilePage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const RecordsPage = lazy(() => import('./pages/RecordsPage'));
+const RecordDetailPage = lazy(() => import('./pages/RecordDetailPage'));
+const NewRecordPage = lazy(() => import('./pages/NewRecordPage'));
+const UsersPage = lazy(() => import('./pages/UsersPage'));
+const AgentsPage = lazy(() => import('./pages/AgentsPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const SLAPolicyMasterPage = lazy(() => import('./pages/SLAPolicyMasterPage'));
-const SLAReportPage       = lazy(() => import('./pages/SLAReportPage'));
-const CMDBPage            = lazy(() => import('./pages/CMDBPage'));
-const AuditPage           = lazy(() => import('./pages/AuditPage'));
-const ShiftsPage          = lazy(() => import('./pages/ShiftsPage'));
-const HolidaysPage        = lazy(() => import('./pages/HolidaysPage'));
-const NotificationsPage   = lazy(() => import('./pages/NotificationsPage'));
-const SAPModulesPage      = lazy(() => import('./pages/SAPModulesPage'));
+const SLAReportPage = lazy(() => import('./pages/SLAReportPage'));
+const CMDBPage = lazy(() => import('./pages/CMDBPage'));
+const AuditPage = lazy(() => import('./pages/AuditPage'));
+const ShiftsPage = lazy(() => import('./pages/ShiftsPage'));
+const HolidaysPage = lazy(() => import('./pages/HolidaysPage'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const SAPModulesPage = lazy(() => import('./pages/SAPModulesPage'));
 const AssignmentRulesPage = lazy(() => import('./pages/AssignmentRulesPage'));
-const ClassificationPage  = lazy(() => import('./pages/ClassificationPage'));
-const AppLayout           = lazy(() => import('./components/layout/AppLayout'));
+const ClassificationPage = lazy(() => import('./pages/ClassificationPage'));
+const AppLayout = lazy(() => import('./components/layout/AppLayout'));
 
 // Customers
-const CustomersPage      = lazy(() => import('./pages/CustomersPage'));
-const CustomerFormPage   = lazy(() => import('./pages/CustomerFormPage'));
+const CustomersPage = lazy(() => import('./pages/CustomersPage'));
+const CustomerFormPage = lazy(() => import('./pages/CustomerFormPage'));
 const CustomerDetailPage = lazy(() => import('./pages/CustomerDetailPage'));
 
 // Contracts
-const ContractsListPage      = lazy(() => import('./pages/ContractsListPage'));
-const ContractFormPage       = lazy(() => import('./pages/ContractFormPage'));
-const ContractDetailPage     = lazy(() => import('./pages/ContractDetailPage'));
+const ContractsListPage = lazy(() => import('./pages/ContractsListPage'));
+const ContractFormPage = lazy(() => import('./pages/ContractFormPage'));
+const ContractDetailPage = lazy(() => import('./pages/ContractDetailPage'));
 const ContractTypeMasterPage = lazy(() => import('./pages/ContractTypeMasterPage'));
-const SupportTypeMasterPage  = lazy(() => import('./pages/SupportTypeMasterPage'));
+const SupportTypeMasterPage = lazy(() => import('./pages/SupportTypeMasterPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,133 +72,202 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-              <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              >
                 {/* General */}
-                <Route path="/dashboard"   element={<DashboardPage />} />
-                <Route path="/records"     element={<RecordsPage />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/records" element={<RecordsPage />} />
                 <Route path="/records/new" element={<NewRecordPage />} />
                 <Route path="/records/:id" element={<RecordDetailPage />} />
                 <Route path="/sla-policies" element={<SLAPolicyMasterPage />} />
-                <Route path="/sla-report" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER']}>
-                    <SLAReportPage />
-                  </ProtectedRoute>
-                } />
+                <Route
+                  path="/sla-report"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER']}>
+                      <SLAReportPage />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/profile" element={<ProfilePage />} />
 
                 {/* Intelligence */}
-                <Route path="/analytics/classification" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER','AGENT']}>
-                    <ClassificationPage />
-                  </ProtectedRoute>
-                } />
+                <Route
+                  path="/analytics/classification"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER', 'AGENT']}>
+                      <ClassificationPage />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* Users */}
-                <Route path="/users" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN']}>
-                    <UsersPage />
-                  </ProtectedRoute>
-                } />
+                <Route
+                  path="/users"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN', 'COMPANY_ADMIN']}>
+                      <UsersPage />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* Agents */}
-                <Route path="/agents" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER']}>
-                    <AgentsPage />
-                  </ProtectedRoute>
-                } />
+                <Route
+                  path="/agents"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER']}>
+                      <AgentsPage />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* Customers */}
-                <Route path="/customers" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER']}>
-                    <CustomersPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/customers/new" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN']}>
-                    <CustomerFormPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/customers/:id/edit" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN']}>
-                    <CustomerFormPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/customers/:id" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER']}>
-                    <CustomerDetailPage />
-                  </ProtectedRoute>
-                } />
+                <Route
+                  path="/customers"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER']}>
+                      <CustomersPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/customers/new"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN']}>
+                      <CustomerFormPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/customers/:id/edit"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN']}>
+                      <CustomerFormPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/customers/:id"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER']}>
+                      <CustomerDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* Contracts */}
-                <Route path="/contracts" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER']}>
-                    <ContractsListPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/support-types" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN']}>
-                    <SupportTypeMasterPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/contract-types" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN']}>
-                    <ContractTypeMasterPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/contracts/new" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN']}>
-                    <ContractFormPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/contracts/:id" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER']}>
-                    <ContractDetailPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/contracts/:id/edit" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN']}>
-                    <ContractFormPage />
-                  </ProtectedRoute>
-                } />
+                <Route
+                  path="/contracts"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER']}>
+                      <ContractsListPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/support-types"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN']}>
+                      <SupportTypeMasterPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/contract-types"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN']}>
+                      <ContractTypeMasterPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/contracts/new"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN']}>
+                      <ContractFormPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/contracts/:id"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER']}>
+                      <ContractDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/contracts/:id/edit"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN']}>
+                      <ContractFormPage />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* CMDB & Audit */}
-                <Route path="/cmdb" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN']}>
-                    <CMDBPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/audit" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN']}>
-                    <AuditPage />
-                  </ProtectedRoute>
-                } />
+                <Route
+                  path="/cmdb"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN']}>
+                      <CMDBPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/audit"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN']}>
+                      <AuditPage />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* Config */}
-                <Route path="/shifts" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN']}>
-                    <ShiftsPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/holidays" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN','PROJECT_MANAGER','AGENT']}>
-                    <HolidaysPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/notifications" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN','COMPANY_ADMIN']}>
-                    <NotificationsPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/sap-modules" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN']}>
-                    <SAPModulesPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/assignment-rules" element={
-                  <ProtectedRoute roles={['SUPER_ADMIN','PROJECT_MANAGER']}>
-                    <AssignmentRulesPage />
-                  </ProtectedRoute>
-                } />
+                <Route
+                  path="/shifts"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN']}>
+                      <ShiftsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/holidays"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER', 'AGENT']}>
+                      <HolidaysPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/notifications"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN', 'COMPANY_ADMIN']}>
+                      <NotificationsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/sap-modules"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN']}>
+                      <SAPModulesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/assignment-rules"
+                  element={
+                    <ProtectedRoute roles={['SUPER_ADMIN', 'PROJECT_MANAGER']}>
+                      <AssignmentRulesPage />
+                    </ProtectedRoute>
+                  }
+                />
               </Route>
 
               <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -14,7 +14,7 @@ export const logger = winston.createLogger({
   format: combine(
     timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     errors({ stack: true }),
-    process.env.NODE_ENV === 'production' ? json() : combine(colorize(), devFormat)
+    process.env.NODE_ENV === 'production' ? json() : combine(colorize(), devFormat),
   ),
   defaultMeta: { service: 'sap-itsm-backend' },
   transports: [
@@ -37,7 +37,5 @@ export const logger = winston.createLogger({
       ? [new winston.transports.File({ filename: path.join('logs', 'exceptions.log') })]
       : []),
   ],
-  rejectionHandlers: [
-    new winston.transports.Console(),
-  ],
+  rejectionHandlers: [new winston.transports.Console()],
 });

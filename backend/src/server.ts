@@ -32,12 +32,20 @@ async function resetAndReseed() {
   await prisma.configurationItem.deleteMany({});
 
   // Contract relations
-  try { await prisma.contractHolidayCalendar.deleteMany({}); } catch {}
+  try {
+    await prisma.contractHolidayCalendar.deleteMany({});
+  } catch {}
   await prisma.contractShift.deleteMany({});
   await prisma.contract.deleteMany({});
-  try { await (prisma as any).customerAgent.deleteMany({}); } catch {}
-  try { await (prisma as any).sLAPolicyMaster.deleteMany({}); } catch {}
-  try { await (prisma as any).supportTypeMaster.deleteMany({}); } catch {}
+  try {
+    await (prisma as any).customerAgent.deleteMany({});
+  } catch {}
+  try {
+    await (prisma as any).sLAPolicyMaster.deleteMany({});
+  } catch {}
+  try {
+    await (prisma as any).supportTypeMaster.deleteMany({});
+  } catch {}
 
   await prisma.customer.deleteMany({});
   await prisma.agent.deleteMany({});
@@ -45,8 +53,12 @@ async function resetAndReseed() {
   await prisma.user.deleteMany({});
 
   // Holiday & shift cleanup
-  try { await prisma.holidayDate.deleteMany({}); } catch {}
-  try { await prisma.holidayCalendar.deleteMany({}); } catch {}
+  try {
+    await prisma.holidayDate.deleteMany({});
+  } catch {}
+  try {
+    await prisma.holidayCalendar.deleteMany({});
+  } catch {}
   await prisma.shift.deleteMany({});
 
   await prisma.tenant.deleteMany({});
@@ -55,11 +67,11 @@ async function resetAndReseed() {
   // Create Intraedge tenant
   const tenant = await prisma.tenant.create({
     data: {
-      name:     'Intraedge',
-      slug:     'intraedge',
+      name: 'Intraedge',
+      slug: 'intraedge',
       timezone: 'Asia/Kolkata',
-      country:  'IN',
-      status:   'ACTIVE',
+      country: 'IN',
+      status: 'ACTIVE',
       settings: { maxUsers: 500, features: ['sla', 'email', 'cmdb', 'shifts', 'holidays'] },
     },
   });
@@ -69,13 +81,13 @@ async function resetAndReseed() {
   const passwordHash = await bcrypt.hash('Admin@123456', 12);
   const admin = await prisma.user.create({
     data: {
-      tenantId:     tenant.id,
-      email:        'admin@intraedge.com',
+      tenantId: tenant.id,
+      email: 'admin@intraedge.com',
       passwordHash,
-      firstName:    'System',
-      lastName:     'Administrator',
-      role:         'SUPER_ADMIN',
-      status:       'ACTIVE',
+      firstName: 'System',
+      lastName: 'Administrator',
+      role: 'SUPER_ADMIN',
+      status: 'ACTIVE',
     },
   });
   logger.info(`✅ Super Admin: ${admin.email} / Admin@123456`);

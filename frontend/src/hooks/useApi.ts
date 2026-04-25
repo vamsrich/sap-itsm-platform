@@ -52,8 +52,7 @@ export function useCreateRecord() {
 export function useUpdateRecord() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: object }) =>
-      recordsApi.update(id, data).then((r) => r.data.record),
+    mutationFn: ({ id, data }: { id: string; data: object }) => recordsApi.update(id, data).then((r) => r.data.record),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['record', id] });
       queryClient.invalidateQueries({ queryKey: ['records'] });

@@ -37,8 +37,8 @@ export interface ListRecordsInput {
   priority?: Priority;
   assignedAgentId?: string;
   customerId?: string;
-  customerIdIn?: string[];  // PROJECT_MANAGER role: scope to managed company IDs
-  createdById?: string;     // USER role: scope to own tickets only
+  customerIdIn?: string[]; // PROJECT_MANAGER role: scope to managed company IDs
+  createdById?: string; // USER role: scope to own tickets only
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -79,7 +79,8 @@ const RECORD_SELECT = {
   createdBy: { select: { id: true, firstName: true, lastName: true, email: true } },
   contract: {
     select: {
-      id: true, contractNumber: true,
+      id: true,
+      contractNumber: true,
       slaPolicyMaster: { select: { name: true, code: true, warningThreshold: true, priorities: true } },
       supportTypeMaster: { select: { name: true, code: true, workDays: true, slaPauseConditions: true } },
     },
@@ -128,7 +129,10 @@ export async function createRecord(input: CreateRecordInput) {
       });
 
       if (contract?.slaPolicyMaster) {
-        const priorities = contract.slaPolicyMaster.priorities as Record<string, { response: number; resolution: number; enabled?: boolean }>;
+        const priorities = contract.slaPolicyMaster.priorities as Record<
+          string,
+          { response: number; resolution: number; enabled?: boolean }
+        >;
         const targets = priorities[input.priority];
 
         if (targets && targets.response && targets.resolution) {
@@ -178,7 +182,7 @@ export async function createRecord(input: CreateRecordInput) {
           sapSubModuleId: input.sapSubModuleId,
           preferredLevel: rule.preferredLevel,
         });
-        const best = scores.find(s => s.status !== 'OFFLINE' && s.openTickets < s.maxConcurrent);
+        const best = scores.find((s) => s.status !== 'OFFLINE' && s.openTickets < s.maxConcurrent);
         if (best) input.assignedAgentId = best.agentId;
       } else if (rule && rule.assignmentMode === 'ROUND_ROBIN') {
         const agent = await roundRobinAgent({
@@ -196,40 +200,45 @@ export async function createRecord(input: CreateRecordInput) {
 
   const record = await prisma.iTSMRecord.create({
     data: {
-      tenantId:        input.tenantId,
-      recordType:      input.recordType,
+      tenantId: input.tenantId,
+      recordType: input.recordType,
       recordNumber,
-      title:           input.title,
-      description:     input.description,
-      priority:        input.priority,
-      customerId:      input.customerId,
-      contractId:      input.contractId,
+      title: input.title,
+      description: input.description,
+      priority: input.priority,
+      customerId: input.customerId,
+      contractId: input.contractId,
       assignedAgentId: input.assignedAgentId,
-      ciId:            input.ciId,
+      ciId: input.ciId,
       parentProblemId: input.parentProblemId,
-      sapModuleId:     input.sapModuleId || null,
-      sapSubModuleId:  input.sapSubModuleId || null,
-      tags:            input.tags || [],
-      metadata:        (input.metadata || {}) as any,
-      createdById:     input.createdById,
-      status:          'NEW',
-      slaTracking:     slaTracking ? { create: slaTracking } : undefined,
+      sapModuleId: input.sapModuleId || null,
+      sapSubModuleId: input.sapSubModuleId || null,
+      tags: input.tags || [],
+      metadata: (input.metadata || {}) as any,
+      createdById: input.createdById,
+      status: 'NEW',
+      slaTracking: slaTracking ? { create: slaTracking } : undefined,
     },
     select: RECORD_SELECT,
   });
 
   await auditLog({
-    tenantId:   input.tenantId,
-    userId:     input.createdById,
-    recordId:   record.id,
-    action:     'CREATE',
+    tenantId: input.tenantId,
+    userId: input.createdById,
+    recordId: record.id,
+    action: 'CREATE',
     entityType: 'ITSMRecord',
-    entityId:   record.id,
-    newValues:  { recordNumber, recordType: input.recordType, priority: input.priority },
+    entityId: record.id,
+    newValues: { recordNumber, recordType: input.recordType, priority: input.priority },
   });
 
   // Notify via notification rules (creates in-app + queues email)
-  await notify({ event: 'TICKET_CREATED', recordId: record.id, tenantId: input.tenantId, triggeredBy: input.createdById });
+  await notify({
+    event: 'TICKET_CREATED',
+    recordId: record.id,
+    tenantId: input.tenantId,
+    triggeredBy: input.createdById,
+  });
 
   if (slaTracking) {
     await slaQueue.add('sla-check', { recordId: record.id }, { delay: 60 * 1000 });
@@ -243,26 +252,28 @@ export async function listRecords(input: ListRecordsInput) {
 
   const where: Prisma.ITSMRecordWhereInput = {
     tenantId: input.tenantId,
-    ...(input.recordType      && { recordType:      input.recordType }),
-    ...(input.status          && { status:          input.status }),
-    ...(input.priority        && { priority:        input.priority }),
+    ...(input.recordType && { recordType: input.recordType }),
+    ...(input.status && { status: input.status }),
+    ...(input.priority && { priority: input.priority }),
     ...(input.assignedAgentId && { assignedAgentId: input.assignedAgentId }),
-    ...(input.customerId      && { customerId:      input.customerId }),
-    ...(input.customerIdIn    && { customerId:      { in: input.customerIdIn } }),
-    ...(input.createdById     && { createdById:     input.createdById }),
+    ...(input.customerId && { customerId: input.customerId }),
+    ...(input.customerIdIn && { customerId: { in: input.customerIdIn } }),
+    ...(input.createdById && { createdById: input.createdById }),
     ...(input.search && {
       OR: [
-        { title:        { contains: input.search, mode: 'insensitive' } },
-        { description:  { contains: input.search, mode: 'insensitive' } },
+        { title: { contains: input.search, mode: 'insensitive' } },
+        { description: { contains: input.search, mode: 'insensitive' } },
         { recordNumber: { contains: input.search, mode: 'insensitive' } },
       ],
     }),
-    ...((input.from || input.to) ? {
-      createdAt: {
-        ...(input.from && { gte: new Date(input.from) }),
-        ...(input.to   && { lte: new Date(input.to) }),
-      },
-    } : {}),
+    ...(input.from || input.to
+      ? {
+          createdAt: {
+            ...(input.from && { gte: new Date(input.from) }),
+            ...(input.to && { lte: new Date(input.to) }),
+          },
+        }
+      : {}),
   };
 
   const orderBy: Prisma.ITSMRecordOrderByWithRelationInput = {
@@ -288,14 +299,21 @@ export async function getRecord(id: string, tenantId: string) {
       ...RECORD_SELECT,
       comments: {
         select: {
-          id: true, text: true, internalFlag: true, createdAt: true,
+          id: true,
+          text: true,
+          internalFlag: true,
+          createdAt: true,
           author: { select: { id: true, firstName: true, lastName: true, role: true } },
         },
         orderBy: { createdAt: 'asc' },
       },
       timeEntries: {
         select: {
-          id: true, hours: true, description: true, workDate: true, status: true,
+          id: true,
+          hours: true,
+          description: true,
+          workDate: true,
+          status: true,
           agent: { select: { user: { select: { firstName: true, lastName: true } } } },
         },
         orderBy: { createdAt: 'desc' },
@@ -327,7 +345,7 @@ export async function updateRecord(
     sapSubModuleId: string | null;
     tags: string[];
     metadata: Record<string, unknown>;
-  }>
+  }>,
 ) {
   const existing = await prisma.iTSMRecord.findFirst({ where: { id, tenantId } });
   if (!existing) throw new AppError('Record not found', 404, 'NOT_FOUND');
@@ -359,13 +377,13 @@ export async function updateRecord(
       }
 
       const statusPauseMap: Record<string, string> = {
-        'PENDING': 'WAITING_CUSTOMER',
+        PENDING: 'WAITING_CUSTOMER',
       };
       const newStatusCondition = statusPauseMap[updates.status] || updates.status;
       const oldStatusCondition = statusPauseMap[existing.status] || existing.status;
 
-      const willPause  = pauseConditions.includes('WAITING_CUSTOMER') && updates.status === 'PENDING';
-      const wasPaused  = pauseConditions.includes('WAITING_CUSTOMER') && existing.status === 'PENDING';
+      const willPause = pauseConditions.includes('WAITING_CUSTOMER') && updates.status === 'PENDING';
+      const wasPaused = pauseConditions.includes('WAITING_CUSTOMER') && existing.status === 'PENDING';
 
       if (!wasPaused && willPause && !sla.pausedAt) {
         await prisma.sLATracking.update({
@@ -377,9 +395,9 @@ export async function updateRecord(
         await prisma.sLATracking.update({
           where: { recordId: id },
           data: {
-            pausedAt:          null,
-            pausedMinutes:     { increment: addedMinutes },
-            responseDeadline:  new Date(sla.responseDeadline.getTime()  + addedMinutes * 60000),
+            pausedAt: null,
+            pausedMinutes: { increment: addedMinutes },
+            responseDeadline: new Date(sla.responseDeadline.getTime() + addedMinutes * 60000),
             resolutionDeadline: new Date(sla.resolutionDeadline.getTime() + addedMinutes * 60000),
           },
         });
@@ -397,23 +415,31 @@ export async function updateRecord(
 
   const diff = diffObjects(existing as any, { ...existing, ...updates } as any);
   await auditLog({
-    tenantId, userId, recordId: id,
-    action:     updates.status ? 'STATUS_CHANGE' : 'UPDATE',
+    tenantId,
+    userId,
+    recordId: id,
+    action: updates.status ? 'STATUS_CHANGE' : 'UPDATE',
     entityType: 'ITSMRecord',
-    entityId:   id,
-    oldValues:  diff.old,
-    newValues:  diff.new,
+    entityId: id,
+    oldValues: diff.old,
+    newValues: diff.new,
   });
 
   if (updates.status) {
     await notify({
-      event: 'STATUS_CHANGED', recordId: id, tenantId, triggeredBy: userId,
+      event: 'STATUS_CHANGED',
+      recordId: id,
+      tenantId,
+      triggeredBy: userId,
       payload: { oldStatus: existing.status, newStatus: updates.status },
     });
   }
   if (updates.assignedAgentId && updates.assignedAgentId !== existing.assignedAgentId) {
     await notify({
-      event: 'ASSIGNED', recordId: id, tenantId, triggeredBy: userId,
+      event: 'ASSIGNED',
+      recordId: id,
+      tenantId,
+      triggeredBy: userId,
       payload: { agentId: updates.assignedAgentId },
     });
   }
@@ -422,8 +448,11 @@ export async function updateRecord(
 }
 
 export async function addComment(
-  recordId: string, tenantId: string, authorId: string,
-  text: string, internalFlag: boolean
+  recordId: string,
+  tenantId: string,
+  authorId: string,
+  text: string,
+  internalFlag: boolean,
 ) {
   const record = await prisma.iTSMRecord.findFirst({ where: { id: recordId, tenantId } });
   if (!record) throw new AppError('Record not found', 404, 'NOT_FOUND');
@@ -435,18 +464,27 @@ export async function addComment(
 
   await cache.del(`record:${recordId}`);
   await auditLog({
-    tenantId, userId: authorId, recordId,
-    action: 'COMMENT', entityType: 'Comment', entityId: comment.id,
+    tenantId,
+    userId: authorId,
+    recordId,
+    action: 'COMMENT',
+    entityType: 'Comment',
+    entityId: comment.id,
     newValues: { internalFlag, length: text.length },
   });
 
   if (!internalFlag) {
     // Determine event based on commenter's role
     const authorRole = comment.author?.role;
-    const commentEvent = (authorRole === 'AGENT' || authorRole === 'SUPER_ADMIN' || authorRole === 'PROJECT_MANAGER')
-      ? 'COMMENT_AGENT' : 'COMMENT_USER';
+    const commentEvent =
+      authorRole === 'AGENT' || authorRole === 'SUPER_ADMIN' || authorRole === 'PROJECT_MANAGER'
+        ? 'COMMENT_AGENT'
+        : 'COMMENT_USER';
     await notify({
-      event: commentEvent, recordId, tenantId, triggeredBy: authorId,
+      event: commentEvent,
+      recordId,
+      tenantId,
+      triggeredBy: authorId,
       payload: {
         commentId: comment.id,
         commentText: text,
@@ -458,8 +496,12 @@ export async function addComment(
 }
 
 export async function addTimeEntry(
-  recordId: string, tenantId: string, agentUserId: string,
-  hours: number, description: string, workDate: string
+  recordId: string,
+  tenantId: string,
+  agentUserId: string,
+  hours: number,
+  description: string,
+  workDate: string,
 ) {
   const record = await prisma.iTSMRecord.findFirst({ where: { id: recordId, tenantId } });
   if (!record) throw new AppError('Record not found', 404, 'NOT_FOUND');
@@ -473,8 +515,12 @@ export async function addTimeEntry(
   });
 
   await auditLog({
-    tenantId, userId: agentUserId, recordId,
-    action: 'UPDATE', entityType: 'TimeEntry', entityId: entry.id,
+    tenantId,
+    userId: agentUserId,
+    recordId,
+    action: 'UPDATE',
+    entityType: 'TimeEntry',
+    entityId: entry.id,
     newValues: { hours, description, workDate },
   });
 

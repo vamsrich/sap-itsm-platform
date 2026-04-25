@@ -4,12 +4,7 @@ import { Prisma } from '@prisma/client';
 import { AppError } from '../../utils/AppError';
 import { logger } from '../../config/logger';
 
-export const errorHandler = (
-  err: Error,
-  req: Request,
-  res: Response,
-  _next: NextFunction
-): void => {
+export const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction): void => {
   // Log all errors
   logger.error({
     message: err.message,

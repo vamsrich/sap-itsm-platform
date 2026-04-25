@@ -37,7 +37,7 @@ export async function loginUser(
   email: string,
   password: string,
   ipAddress?: string,
-  userAgent?: string
+  userAgent?: string,
 ): Promise<{ tokens: AuthTokens; user: object }> {
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase().trim() },
@@ -207,11 +207,7 @@ export async function logoutUser(refreshToken: string, userId: string): Promise<
   });
 }
 
-export async function changePassword(
-  userId: string,
-  currentPassword: string,
-  newPassword: string
-): Promise<void> {
+export async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new AppError('User not found', 404, 'NOT_FOUND');
 

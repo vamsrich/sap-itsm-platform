@@ -63,7 +63,10 @@ export async function processSLAChecks(): Promise<void> {
 async function processSingleSLA(sla: any, now: Date): Promise<void> {
   const record = sla.record;
   const updates: Record<string, unknown> = {};
-  const jobs: Array<{ name: string; data: { recordId: string; tenantId: string; event: string; slaType: string; deadline?: Date } }> = [];
+  const jobs: Array<{
+    name: string;
+    data: { recordId: string; tenantId: string; event: string; slaType: string; deadline?: Date };
+  }> = [];
 
   const effectiveNow = sla.pausedAt ? sla.pausedAt : now;
 
@@ -82,7 +85,7 @@ async function processSingleSLA(sla: any, now: Date): Promise<void> {
   // ── Response SLA ──────────────────────────────────────────
   if (!sla.breachResponse && !sla.record.respondedAt) {
     const responseDeadline = sla.responseDeadline;
-    const totalMs = responseDeadline.getTime() - (sla.record.createdAt.getTime());
+    const totalMs = responseDeadline.getTime() - sla.record.createdAt.getTime();
     const elapsedMs = effectiveNow.getTime() - sla.record.createdAt.getTime();
     const elapsedRatio = elapsedMs / totalMs;
 
@@ -196,7 +199,7 @@ export async function isSLAApplicable(contractId: string, priority: string): Pro
     where: { id: contractId },
     include: {
       supportTypeMaster: { select: { priorityScope: true, slaEnabled: true } },
-      slaPolicyMaster:   { select: { priorities: true } },
+      slaPolicyMaster: { select: { priorities: true } },
     },
   });
 
@@ -206,7 +209,7 @@ export async function isSLAApplicable(contractId: string, priority: string): Pro
   const st = contract.supportTypeMaster;
   if (st) {
     if (st.priorityScope === 'P1_ONLY' && priority !== 'P1') return false;
-    if (st.priorityScope === 'P1_P2' && !['P1','P2'].includes(priority)) return false;
+    if (st.priorityScope === 'P1_P2' && !['P1', 'P2'].includes(priority)) return false;
     const slaEnabled = st.slaEnabled as Record<string, boolean> | null;
     if (slaEnabled && slaEnabled[priority] === false) return false;
   }
@@ -221,7 +224,6 @@ export async function isSLAApplicable(contractId: string, priority: string): Pro
 
   return true;
 }
-
 
 /**
  * Calculate effective SLA deadline considering:
@@ -267,7 +269,7 @@ export async function calculateSLADeadline(params: {
       }
     }
   }
-  // If slaFreezesOnHolidays is false, holidays set stays empty — 
+  // If slaFreezesOnHolidays is false, holidays set stays empty —
   // SLA runs normally on holiday dates as per Support Type policy
 
   const shift = contract.shifts[0].shift;
@@ -277,7 +279,7 @@ export async function calculateSLADeadline(params: {
   // Work days come from Support Type Master, not from the Shift
   // Fall back to Mon-Fri if no support type configured
   const supportWorkDays = (contract as any).supportTypeMaster?.workDays;
-  const workDays = new Set<number>(supportWorkDays || [1,2,3,4,5]);
+  const workDays = new Set<number>(supportWorkDays || [1, 2, 3, 4, 5]);
 
   let remaining = targetMinutes;
   let current = new Date(startTime);
@@ -293,12 +295,7 @@ export async function calculateSLADeadline(params: {
     const shiftStart = startHour * 60 + startMin;
     const shiftEnd = endHour * 60 + endMin;
 
-    if (
-      workDays.has(dayOfWeek) &&
-      !holidays.has(dateStr) &&
-      minuteOfDay >= shiftStart &&
-      minuteOfDay < shiftEnd
-    ) {
+    if (workDays.has(dayOfWeek) && !holidays.has(dateStr) && minuteOfDay >= shiftStart && minuteOfDay < shiftEnd) {
       const minutesToShiftEnd = shiftEnd - minuteOfDay;
       const consume = Math.min(remaining, minutesToShiftEnd);
       remaining -= consume;
@@ -318,7 +315,7 @@ function getNextShiftStart(
   timezone: string,
   startHour: number,
   startMin: number,
-  holidays: Set<string>
+  holidays: Set<string>,
 ): Date {
   let next = new Date(current);
   next.setMinutes(0, 0, 0);

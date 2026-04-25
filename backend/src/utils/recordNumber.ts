@@ -12,10 +12,7 @@ const PREFIX_MAP: Record<string, string> = {
  * Generate a unique, sequential record number per tenant per type.
  * Uses Redis atomic counter for performance, DB as fallback.
  */
-export async function generateRecordNumber(
-  tenantId: string,
-  recordType: string
-): Promise<string> {
+export async function generateRecordNumber(tenantId: string, recordType: string): Promise<string> {
   const prefix = PREFIX_MAP[recordType] || 'TKT';
   const year = new Date().getFullYear();
   const redisKey = `counter:${tenantId}:${recordType}:${year}`;

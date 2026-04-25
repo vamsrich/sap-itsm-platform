@@ -5,18 +5,49 @@ import { PageHeader } from '../components/ui/Forms';
 import { Search, Filter, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 
-const ACTION_COLORS: Record<string,string> = {
-  CREATE: 'bg-green-100 text-green-700', UPDATE: 'bg-blue-100 text-blue-700',
-  DELETE: 'bg-red-100 text-red-700', STATUS_CHANGE: 'bg-purple-100 text-purple-700',
-  ASSIGN: 'bg-amber-100 text-amber-700', COMMENT: 'bg-cyan-100 text-cyan-700',
-  LOGIN: 'bg-gray-100 text-gray-600', LOGIN_FAILED: 'bg-red-100 text-red-600',
-  TOKEN_REFRESH: 'bg-gray-50 text-gray-400', PASSWORD_CHANGE: 'bg-orange-100 text-orange-700',
-  SLA_BREACH: 'bg-red-100 text-red-700', SLA_WARNING: 'bg-amber-100 text-amber-700',
+const ACTION_COLORS: Record<string, string> = {
+  CREATE: 'bg-green-100 text-green-700',
+  UPDATE: 'bg-blue-100 text-blue-700',
+  DELETE: 'bg-red-100 text-red-700',
+  STATUS_CHANGE: 'bg-purple-100 text-purple-700',
+  ASSIGN: 'bg-amber-100 text-amber-700',
+  COMMENT: 'bg-cyan-100 text-cyan-700',
+  LOGIN: 'bg-gray-100 text-gray-600',
+  LOGIN_FAILED: 'bg-red-100 text-red-600',
+  TOKEN_REFRESH: 'bg-gray-50 text-gray-400',
+  PASSWORD_CHANGE: 'bg-orange-100 text-orange-700',
+  SLA_BREACH: 'bg-red-100 text-red-700',
+  SLA_WARNING: 'bg-amber-100 text-amber-700',
   TIME_ENTRY: 'bg-indigo-100 text-indigo-700',
 };
 
-const ENTITY_TYPES = ['User','Agent','Customer','Contract','ITSMRecord','ConfigurationItem','SupportTypeMaster','SLAPolicyMaster','Shift','NotificationRule','EmailTemplate'];
-const ACTIONS = ['CREATE','UPDATE','DELETE','STATUS_CHANGE','ASSIGN','COMMENT','TIME_ENTRY','LOGIN','LOGIN_FAILED','PASSWORD_CHANGE','SLA_BREACH','SLA_WARNING'];
+const ENTITY_TYPES = [
+  'User',
+  'Agent',
+  'Customer',
+  'Contract',
+  'ITSMRecord',
+  'ConfigurationItem',
+  'SupportTypeMaster',
+  'SLAPolicyMaster',
+  'Shift',
+  'NotificationRule',
+  'EmailTemplate',
+];
+const ACTIONS = [
+  'CREATE',
+  'UPDATE',
+  'DELETE',
+  'STATUS_CHANGE',
+  'ASSIGN',
+  'COMMENT',
+  'TIME_ENTRY',
+  'LOGIN',
+  'LOGIN_FAILED',
+  'PASSWORD_CHANGE',
+  'SLA_BREACH',
+  'SLA_WARNING',
+];
 
 export default function AuditPage() {
   const [page, setPage] = useState(1);
@@ -26,11 +57,15 @@ export default function AuditPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['audit-logs', page, filterAction, filterEntity],
-    queryFn: () => auditApi.list({
-      page, limit: 30,
-      ...(filterAction && { action: filterAction }),
-      ...(filterEntity && { entityType: filterEntity }),
-    }).then(r => r.data),
+    queryFn: () =>
+      auditApi
+        .list({
+          page,
+          limit: 30,
+          ...(filterAction && { action: filterAction }),
+          ...(filterEntity && { entityType: filterEntity }),
+        })
+        .then((r) => r.data),
   });
 
   const logs = data?.logs || [];
@@ -38,7 +73,7 @@ export default function AuditPage() {
   const totalPages = Math.ceil(total / 30);
 
   const toggleRow = (id: string) => {
-    setExpandedRows(prev => {
+    setExpandedRows((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -69,18 +104,40 @@ export default function AuditPage() {
       <PageHeader title="Audit Log" subtitle={`${total} entries`} />
 
       <div className="flex items-center gap-3 flex-wrap">
-        <Filter className="w-4 h-4 text-gray-400"/>
-        <select value={filterEntity} onChange={e => { setFilterEntity(e.target.value); setPage(1); }}
-          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white min-w-[180px]">
+        <Filter className="w-4 h-4 text-gray-400" />
+        <select
+          value={filterEntity}
+          onChange={(e) => {
+            setFilterEntity(e.target.value);
+            setPage(1);
+          }}
+          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white min-w-[180px]"
+        >
           <option value="">All Entity Types</option>
-          {ENTITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          {ENTITY_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
         </select>
-        <select value={filterAction} onChange={e => { setFilterAction(e.target.value); setPage(1); }}
-          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white min-w-[160px]">
+        <select
+          value={filterAction}
+          onChange={(e) => {
+            setFilterAction(e.target.value);
+            setPage(1);
+          }}
+          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white min-w-[160px]"
+        >
           <option value="">All Actions</option>
-          {ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+          {ACTIONS.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
         </select>
-        <span className="text-xs text-gray-400 ml-auto">Showing page {page} of {totalPages || 1}</span>
+        <span className="text-xs text-gray-400 ml-auto">
+          Showing page {page} of {totalPages || 1}
+        </span>
       </div>
 
       {isLoading ? (
@@ -107,29 +164,43 @@ export default function AuditPage() {
                 const hasDetails = log.oldValues || log.newValues;
                 return (
                   <React.Fragment key={log.id}>
-                    <tr className={`hover:bg-gray-50 ${hasDetails ? 'cursor-pointer' : ''}`}
-                      onClick={() => hasDetails && toggleRow(log.id)}>
+                    <tr
+                      className={`hover:bg-gray-50 ${hasDetails ? 'cursor-pointer' : ''}`}
+                      onClick={() => hasDetails && toggleRow(log.id)}
+                    >
                       <td className="px-3 py-3">
-                        {hasDetails && (isExpanded
-                          ? <ChevronDown className="w-3.5 h-3.5 text-gray-400"/>
-                          : <ChevronRight className="w-3.5 h-3.5 text-gray-400"/>
-                        )}
+                        {hasDetails &&
+                          (isExpanded ? (
+                            <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                          ) : (
+                            <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                          ))}
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                         {format(new Date(log.createdAt), 'dd MMM yyyy HH:mm:ss')}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-700">
-                        {log.user ? `${log.user.firstName} ${log.user.lastName}` : <span className="text-gray-400">System</span>}
+                        {log.user ? (
+                          `${log.user.firstName} ${log.user.lastName}`
+                        ) : (
+                          <span className="text-gray-400">System</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ACTION_COLORS[log.action] || 'bg-gray-100 text-gray-600'}`}>
+                        <span
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ACTION_COLORS[log.action] || 'bg-gray-100 text-gray-600'}`}
+                        >
                           {log.action}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-600">{log.entityType}</span>
+                        <span className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-600">
+                          {log.entityType}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-xs font-mono text-gray-400 max-w-[120px] truncate">{log.entityId?.slice(0, 8)}…</td>
+                      <td className="px-4 py-3 text-xs font-mono text-gray-400 max-w-[120px] truncate">
+                        {log.entityId?.slice(0, 8)}…
+                      </td>
                       <td className="px-4 py-3 text-xs text-gray-400">{log.ipAddress || '—'}</td>
                     </tr>
                     {isExpanded && hasDetails && (
@@ -153,10 +224,24 @@ export default function AuditPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-gray-500">
-          <span>Page {page} of {totalPages}</span>
+          <span>
+            Page {page} of {totalPages}
+          </span>
           <div className="flex gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 border rounded-lg disabled:opacity-40 hover:bg-gray-50">← Prev</button>
-            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 border rounded-lg disabled:opacity-40 hover:bg-gray-50">Next →</button>
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="px-3 py-1.5 border rounded-lg disabled:opacity-40 hover:bg-gray-50"
+            >
+              ← Prev
+            </button>
+            <button
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="px-3 py-1.5 border rounded-lg disabled:opacity-40 hover:bg-gray-50"
+            >
+              Next →
+            </button>
           </div>
         </div>
       )}

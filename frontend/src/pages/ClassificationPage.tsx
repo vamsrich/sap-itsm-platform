@@ -2,12 +2,28 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, CartesianGrid, Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  CartesianGrid,
+  Legend,
 } from 'recharts';
 import {
-  AlertTriangle, TrendingUp, Search, AlertCircle,
-  ChevronDown, ChevronRight, ExternalLink, Lightbulb, Activity,
+  AlertTriangle,
+  TrendingUp,
+  Search,
+  AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Lightbulb,
+  Activity,
 } from 'lucide-react';
 import { analyticsApi } from '../api/services';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
@@ -33,32 +49,32 @@ export default function ClassificationPage() {
 
   const { data: classData, isLoading: loadingClass } = useQuery({
     queryKey: ['analytics-classification', days],
-    queryFn: () => analyticsApi.classification(days).then(r => r.data),
+    queryFn: () => analyticsApi.classification(days).then((r) => r.data),
   });
 
   const { data: patternData, isLoading: loadingPatterns } = useQuery({
     queryKey: ['analytics-patterns', days],
-    queryFn: () => analyticsApi.patterns(days).then(r => r.data),
+    queryFn: () => analyticsApi.patterns(days).then((r) => r.data),
     enabled: activeTab === 'patterns',
   });
 
   const { data: rootData, isLoading: loadingRoot } = useQuery({
     queryKey: ['analytics-rootcause', days],
-    queryFn: () => analyticsApi.rootCause(days).then(r => r.data),
+    queryFn: () => analyticsApi.rootCause(days).then((r) => r.data),
     enabled: activeTab === 'rootcause',
   });
 
   const { data: gapData, isLoading: loadingGaps } = useQuery({
     queryKey: ['analytics-gaps', days],
-    queryFn: () => analyticsApi.knowledgeGaps(days).then(r => r.data),
+    queryFn: () => analyticsApi.knowledgeGaps(days).then((r) => r.data),
     enabled: activeTab === 'gaps',
   });
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'classification', label: 'Incident Classification', icon: <Activity className="w-4 h-4" /> },
-    { id: 'patterns',       label: 'Recurring Patterns',      icon: <TrendingUp className="w-4 h-4" /> },
-    { id: 'rootcause',      label: 'Root-Cause View',         icon: <Search className="w-4 h-4" /> },
-    { id: 'gaps',           label: 'Knowledge Gaps',          icon: <Lightbulb className="w-4 h-4" /> },
+    { id: 'patterns', label: 'Recurring Patterns', icon: <TrendingUp className="w-4 h-4" /> },
+    { id: 'rootcause', label: 'Root-Cause View', icon: <Search className="w-4 h-4" /> },
+    { id: 'gaps', label: 'Knowledge Gaps', icon: <Lightbulb className="w-4 h-4" /> },
   ];
 
   return (
@@ -69,11 +85,13 @@ export default function ClassificationPage() {
         actions={
           <select
             value={days}
-            onChange={e => setDays(Number(e.target.value))}
+            onChange={(e) => setDays(Number(e.target.value))}
             className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            {PERIOD_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+            {PERIOD_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
         }
@@ -81,7 +99,7 @@ export default function ClassificationPage() {
 
       {/* Tab Bar */}
       <div className="flex gap-1 border-b border-gray-200">
-        {tabs.map(tab => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -98,8 +116,10 @@ export default function ClassificationPage() {
       </div>
 
       {/* ── Tab: Classification ─────────────────────────────────────────────── */}
-      {activeTab === 'classification' && (
-        loadingClass ? <LoadingSpinner label="Analysing incidents…" /> : (
+      {activeTab === 'classification' &&
+        (loadingClass ? (
+          <LoadingSpinner label="Analysing incidents…" />
+        ) : (
           <div className="space-y-6">
             {/* Summary KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -141,14 +161,19 @@ export default function ClassificationPage() {
                     <PieChart>
                       <Pie
                         data={(classData?.byType || []).map((t: any) => ({ name: t.type, value: t.count }))}
-                        dataKey="value" nameKey="name" cx="50%" cy="50%"
-                        innerRadius={50} outerRadius={80}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={80}
                       >
                         {(classData?.byType || []).map((_: any, i: number) => (
                           <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip /><Legend />
+                      <Tooltip />
+                      <Legend />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -158,7 +183,7 @@ export default function ClassificationPage() {
                 <div className="p-4">
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart
-                      data={['P1','P2','P3','P4'].map(p => ({
+                      data={['P1', 'P2', 'P3', 'P4'].map((p) => ({
                         name: p,
                         count: (classData?.byPriority || []).find((x: any) => x.priority === p)?.count || 0,
                       }))}
@@ -169,8 +194,8 @@ export default function ClassificationPage() {
                       <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
                       <Tooltip />
                       <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                        {['P1','P2','P3','P4'].map((_: any, i: number) => (
-                          <Cell key={i} fill={['#ef4444','#f97316','#eab308','#22c55e'][i]} />
+                        {['P1', 'P2', 'P3', 'P4'].map((_: any, i: number) => (
+                          <Cell key={i} fill={['#ef4444', '#f97316', '#eab308', '#22c55e'][i]} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -184,9 +209,14 @@ export default function ClassificationPage() {
                     <PieChart>
                       <Pie
                         data={(classData?.byStatus || []).map((s: any) => ({
-                          name: s.status.replace('_', ' '), value: s.count,
+                          name: s.status.replace('_', ' '),
+                          value: s.count,
                         }))}
-                        dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
                         label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                         labelLine={false}
                       >
@@ -217,19 +247,27 @@ export default function ClassificationPage() {
                       onClick={() => setExpandedModule(expandedModule === mod.moduleId ? null : mod.moduleId)}
                     >
                       <div className="flex items-center gap-2 w-8">
-                        {mod.subModules?.length > 0
-                          ? expandedModule === mod.moduleId
-                            ? <ChevronDown className="w-4 h-4 text-gray-400" />
-                            : <ChevronRight className="w-4 h-4 text-gray-400" />
-                          : <span className="w-4" />
-                        }
+                        {mod.subModules?.length > 0 ? (
+                          expandedModule === mod.moduleId ? (
+                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          )
+                        ) : (
+                          <span className="w-4" />
+                        )}
                       </div>
 
                       {/* Health dot */}
-                      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                        mod.health === 'critical' ? 'bg-red-500' :
-                        mod.health === 'warning'  ? 'bg-amber-400' : 'bg-green-400'
-                      }`} />
+                      <span
+                        className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                          mod.health === 'critical'
+                            ? 'bg-red-500'
+                            : mod.health === 'warning'
+                              ? 'bg-amber-400'
+                              : 'bg-green-400'
+                        }`}
+                      />
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -246,7 +284,9 @@ export default function ClassificationPage() {
                           <div className="text-xs text-gray-400">Total</div>
                         </div>
                         <div className="text-center">
-                          <div className={`font-semibold ${mod.open > 0 ? 'text-orange-600' : 'text-gray-400'}`}>{mod.open}</div>
+                          <div className={`font-semibold ${mod.open > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                            {mod.open}
+                          </div>
                           <div className="text-xs text-gray-400">Open</div>
                         </div>
                         <div className="text-center">
@@ -254,18 +294,24 @@ export default function ClassificationPage() {
                           <div className="text-xs text-gray-400">Resolved</div>
                         </div>
                         <div className="text-center">
-                          <div className={`font-semibold ${mod.p1p2Open > 0 ? 'text-red-600' : 'text-gray-400'}`}>{mod.p1p2Open}</div>
+                          <div className={`font-semibold ${mod.p1p2Open > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                            {mod.p1p2Open}
+                          </div>
                           <div className="text-xs text-gray-400">P1/P2</div>
                         </div>
                         <div className="text-center">
                           <div className="font-semibold text-gray-700">{mod.incidents}</div>
                           <div className="text-xs text-gray-400">Incidents</div>
                         </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          mod.health === 'critical' ? 'bg-red-100 text-red-700' :
-                          mod.health === 'warning'  ? 'bg-amber-100 text-amber-700' :
-                          'bg-green-100 text-green-700'
-                        }`}>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            mod.health === 'critical'
+                              ? 'bg-red-100 text-red-700'
+                              : mod.health === 'warning'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-green-100 text-green-700'
+                          }`}
+                        >
                           {mod.health}
                         </span>
                       </div>
@@ -290,12 +336,13 @@ export default function ClassificationPage() {
               </div>
             </Card>
           </div>
-        )
-      )}
+        ))}
 
       {/* ── Tab: Patterns ───────────────────────────────────────────────────── */}
-      {activeTab === 'patterns' && (
-        loadingPatterns ? <LoadingSpinner label="Detecting patterns…" /> : (
+      {activeTab === 'patterns' &&
+        (loadingPatterns ? (
+          <LoadingSpinner label="Detecting patterns…" />
+        ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <StatCard
@@ -324,8 +371,8 @@ export default function ClassificationPage() {
             {(patternData?.patterns || []).length === 0 ? (
               <Card title="No Patterns Detected">
                 <p className="text-sm text-gray-400 text-center py-10">
-                  No recurring patterns found with {patternData?.period?.threshold || 3}+ incidents in the last {days} days.
-                  Try extending the time window.
+                  No recurring patterns found with {patternData?.period?.threshold || 3}+ incidents in the last {days}{' '}
+                  days. Try extending the time window.
                 </p>
               </Card>
             ) : (
@@ -333,10 +380,15 @@ export default function ClassificationPage() {
                 {(patternData?.patterns || []).map((p: any, idx: number) => (
                   <div key={idx} className="border border-gray-200 rounded-xl overflow-hidden">
                     <div className="flex items-start gap-4 p-4">
-                      <span className={`mt-0.5 w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                        p.severity === 'high'   ? 'bg-red-500' :
-                        p.severity === 'medium' ? 'bg-amber-400' : 'bg-blue-400'
-                      }`} />
+                      <span
+                        className={`mt-0.5 w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                          p.severity === 'high'
+                            ? 'bg-red-500'
+                            : p.severity === 'medium'
+                              ? 'bg-amber-400'
+                              : 'bg-blue-400'
+                        }`}
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
@@ -348,16 +400,16 @@ export default function ClassificationPage() {
                             </span>
                           )}
                           <span className="text-sm font-medium text-gray-900">{p.moduleName}</span>
-                          {p.subModuleName && (
-                            <span className="text-sm text-gray-500">/ {p.subModuleName}</span>
-                          )}
+                          {p.subModuleName && <span className="text-sm text-gray-500">/ {p.subModuleName}</span>}
                         </div>
                         <p className="text-xs text-gray-500 mb-3">
-                          <span className="font-semibold text-gray-800">{p.count} incidents</span> in the last {days} days
-                          {p.hasProblemRecord
-                            ? <span className="ml-2 text-green-600 font-medium">✓ Problem record exists</span>
-                            : <span className="ml-2 text-red-600 font-medium">✗ No Problem record</span>
-                          }
+                          <span className="font-semibold text-gray-800">{p.count} incidents</span> in the last {days}{' '}
+                          days
+                          {p.hasProblemRecord ? (
+                            <span className="ml-2 text-green-600 font-medium">✓ Problem record exists</span>
+                          ) : (
+                            <span className="ml-2 text-red-600 font-medium">✗ No Problem record</span>
+                          )}
                         </p>
                         {/* Sample tickets */}
                         <div className="space-y-1">
@@ -376,11 +428,15 @@ export default function ClassificationPage() {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          p.severity === 'high'   ? 'bg-red-100 text-red-700' :
-                          p.severity === 'medium' ? 'bg-amber-100 text-amber-700' :
-                          'bg-blue-100 text-blue-700'
-                        }`}>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            p.severity === 'high'
+                              ? 'bg-red-100 text-red-700'
+                              : p.severity === 'medium'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-blue-100 text-blue-700'
+                          }`}
+                        >
                           {p.severity}
                         </span>
                         {!p.hasProblemRecord && (
@@ -398,12 +454,13 @@ export default function ClassificationPage() {
               </div>
             )}
           </div>
-        )
-      )}
+        ))}
 
       {/* ── Tab: Root Cause ─────────────────────────────────────────────────── */}
-      {activeTab === 'rootcause' && (
-        loadingRoot ? <LoadingSpinner label="Analysing bottlenecks…" /> : (
+      {activeTab === 'rootcause' &&
+        (loadingRoot ? (
+          <LoadingSpinner label="Analysing bottlenecks…" />
+        ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Card title="Where Tickets Stall — By Module & Status">
@@ -426,7 +483,9 @@ export default function ClassificationPage() {
                           <div className="text-xs text-gray-400">tickets</div>
                         </div>
                         <div>
-                          <div className={`text-sm font-semibold ${Number(row.avg_hours_in_status) > 48 ? 'text-red-600' : Number(row.avg_hours_in_status) > 24 ? 'text-amber-600' : 'text-gray-700'}`}>
+                          <div
+                            className={`text-sm font-semibold ${Number(row.avg_hours_in_status) > 48 ? 'text-red-600' : Number(row.avg_hours_in_status) > 24 ? 'text-amber-600' : 'text-gray-700'}`}
+                          >
                             {row.avg_hours_in_status}h
                           </div>
                           <div className="text-xs text-gray-400">avg wait</div>
@@ -456,7 +515,9 @@ export default function ClassificationPage() {
                         <p className="text-sm font-medium text-gray-900">{row.agent_name}</p>
                         <p className="text-xs text-gray-400">{row.pending_count} pending tickets</p>
                       </div>
-                      <div className={`text-sm font-semibold ${Number(row.avg_pending_hours) > 48 ? 'text-red-600' : 'text-amber-600'}`}>
+                      <div
+                        className={`text-sm font-semibold ${Number(row.avg_pending_hours) > 48 ? 'text-red-600' : 'text-amber-600'}`}
+                      >
                         avg {row.avg_pending_hours}h
                       </div>
                     </div>
@@ -465,12 +526,13 @@ export default function ClassificationPage() {
               </Card>
             </div>
           </div>
-        )
-      )}
+        ))}
 
       {/* ── Tab: Knowledge Gaps ──────────────────────────────────────────────── */}
-      {activeTab === 'gaps' && (
-        loadingGaps ? <LoadingSpinner label="Identifying knowledge gaps…" /> : (
+      {activeTab === 'gaps' &&
+        (loadingGaps ? (
+          <LoadingSpinner label="Identifying knowledge gaps…" />
+        ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <StatCard
@@ -499,7 +561,8 @@ export default function ClassificationPage() {
             {(gapData?.gaps || []).length === 0 ? (
               <Card title="No Gaps Found">
                 <p className="text-sm text-gray-400 text-center py-10">
-                  No knowledge gaps detected in the last {days} days. Either coverage is good or there isn't enough data yet.
+                  No knowledge gaps detected in the last {days} days. Either coverage is good or there isn't enough data
+                  yet.
                 </p>
               </Card>
             ) : (
@@ -527,9 +590,13 @@ export default function ClassificationPage() {
                           </span>
                         )}
                       </div>
-                      <div><PriorityBadge priority={gap.priority} /></div>
+                      <div>
+                        <PriorityBadge priority={gap.priority} />
+                      </div>
                       <div className="text-sm font-semibold text-gray-900">{gap.incidentCount}</div>
-                      <div className={`text-sm font-semibold ${gap.unresolvedCount > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                      <div
+                        className={`text-sm font-semibold ${gap.unresolvedCount > 0 ? 'text-orange-600' : 'text-gray-400'}`}
+                      >
                         {gap.unresolvedCount}
                       </div>
                       <div>
@@ -549,8 +616,7 @@ export default function ClassificationPage() {
               </Card>
             )}
           </div>
-        )
-      )}
+        ))}
     </div>
   );
 }

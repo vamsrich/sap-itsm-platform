@@ -1,19 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { validate } from '../middleware/validate.middleware';
 import { verifyJWT, enforceTenantScope } from '../middleware/auth.middleware';
-import {
-  loginSchema,
-  registerSchema,
-  refreshTokenSchema,
-  changePasswordSchema,
-} from '../validators/auth.validators';
-import {
-  loginUser,
-  registerUser,
-  refreshTokens,
-  logoutUser,
-  changePassword,
-} from '../../services/auth.service';
+import { loginSchema, registerSchema, refreshTokenSchema, changePasswordSchema } from '../validators/auth.validators';
+import { loginUser, registerUser, refreshTokens, logoutUser, changePassword } from '../../services/auth.service';
 
 const router = Router();
 
@@ -91,9 +80,9 @@ router.get('/me', verifyJWT, async (req: Request, res: Response, next: NextFunct
 router.get('/debug-scope', verifyJWT, enforceTenantScope, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { prisma } = await import('../../config/database');
-    const role       = req.user!.role;
-    const userId     = req.user!.sub;
-    const tenantId   = req.user!.tenantId;
+    const role = req.user!.role;
+    const userId = req.user!.sub;
+    const tenantId = req.user!.tenantId;
     const customerId = req.user!.customerId ?? null;
 
     const debug: any = {
@@ -105,12 +94,16 @@ router.get('/debug-scope', verifyJWT, enforceTenantScope, async (req: Request, r
       debug.scope.type = 'COMPANY_ADMIN → filters by customerId';
       debug.scope.customerId = customerId;
       if (customerId) {
-        const customer = await prisma.customer.findUnique({ where: { id: customerId }, select: { id: true, companyName: true } });
+        const customer = await prisma.customer.findUnique({
+          where: { id: customerId },
+          select: { id: true, companyName: true },
+        });
         debug.scope.customer = customer;
         const recordCount = await prisma.iTSMRecord.count({ where: { tenantId, customerId } });
         debug.scope.recordCount = recordCount;
       } else {
-        debug.scope.problem = 'customerId is NULL — user is not linked to any customer. Fix: set user.customerId in the database.';
+        debug.scope.problem =
+          'customerId is NULL — user is not linked to any customer. Fix: set user.customerId in the database.';
       }
     } else if (role === 'USER') {
       debug.scope.type = 'USER → filters by customerId + createdById';
@@ -142,16 +135,18 @@ router.get('/debug-scope', verifyJWT, enforceTenantScope, async (req: Request, r
           select: { id: true, companyName: true },
         });
         debug.scope.managedCustomers = managedCustomers;
-        const validIds = managedCustomers.map(c => c.id);
+        const validIds = managedCustomers.map((c) => c.id);
         debug.scope.managedCustomerIds = validIds;
         if (validIds.length > 0) {
           const recordCount = await prisma.iTSMRecord.count({ where: { tenantId, customerId: { in: validIds } } });
           debug.scope.recordCount = recordCount;
         } else {
-          debug.scope.problem = 'No customers have projectManagerAgentId pointing to this agent. Fix: set Customer.projectManagerAgentId = this agent ID for each managed company.';
+          debug.scope.problem =
+            'No customers have projectManagerAgentId pointing to this agent. Fix: set Customer.projectManagerAgentId = this agent ID for each managed company.';
         }
       } else {
-        debug.scope.problem = 'No Agent record found for this PM user. Fix: create an Agent record (agentType=PROJECT_MANAGER) linked to this userId.';
+        debug.scope.problem =
+          'No Agent record found for this PM user. Fix: create an Agent record (agentType=PROJECT_MANAGER) linked to this userId.';
       }
     } else if (role === 'SUPER_ADMIN') {
       debug.scope.type = 'SUPER_ADMIN → sees all records in tenant';
@@ -166,13 +161,18 @@ router.get('/debug-scope', verifyJWT, enforceTenantScope, async (req: Request, r
 });
 
 // POST /auth/change-password
-router.post('/change-password', verifyJWT, validate(changePasswordSchema), async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    await changePassword(req.user!.sub, req.body.currentPassword, req.body.newPassword);
-    res.json({ success: true, message: 'Password changed successfully' });
-  } catch (err) {
-    next(err);
-  }
-});
+router.post(
+  '/change-password',
+  verifyJWT,
+  validate(changePasswordSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await changePassword(req.user!.sub, req.body.currentPassword, req.body.newPassword);
+      res.json({ success: true, message: 'Password changed successfully' });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 export default router;

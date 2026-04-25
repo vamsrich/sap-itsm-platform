@@ -12,7 +12,7 @@ export function startEmailWorker(): void {
     {
       connection: bullConnection,
       concurrency: 5, // Process 5 emails concurrently
-    }
+    },
   );
 
   worker.on('completed', (job) => {

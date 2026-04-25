@@ -17,7 +17,7 @@ async function getPMScope(req: Request): Promise<string[] | null> {
     where: { projectManagerAgentId: agent.id, tenant: { id: req.user!.tenantId } },
     select: { id: true },
   });
-  return managed.map(c => c.id);
+  return managed.map((c) => c.id);
 }
 
 // GET /assignment-rules — list rules
@@ -37,7 +37,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       orderBy: [{ customerId: 'asc' }, { sortOrder: 'asc' }],
     });
     res.json({ success: true, rules });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /assignment-rules — create rule
@@ -75,7 +77,9 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       },
     });
     res.status(201).json({ success: true, rule });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // PATCH /assignment-rules/:id
@@ -84,7 +88,10 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
     const existing = await prisma.assignmentRule.findFirst({
       where: { id: req.params.id, tenantId: req.user!.tenantId },
     });
-    if (!existing) { res.status(404).json({ success: false, error: 'Rule not found' }); return; }
+    if (!existing) {
+      res.status(404).json({ success: false, error: 'Rule not found' });
+      return;
+    }
 
     const pmScope = await getPMScope(req);
     if (pmScope && !pmScope.includes(existing.customerId)) {
@@ -92,11 +99,20 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
       return;
     }
 
-    const allowed = ['name', 'recordType', 'priority', 'sapModuleId', 'assignmentMode', 'preferredLevel', 'sortOrder', 'isActive'];
+    const allowed = [
+      'name',
+      'recordType',
+      'priority',
+      'sapModuleId',
+      'assignmentMode',
+      'preferredLevel',
+      'sortOrder',
+      'isActive',
+    ];
     const data: any = {};
     for (const k of allowed) {
       if (req.body[k] !== undefined) {
-        data[k] = (typeof req.body[k] === 'string' && req.body[k] === '') ? null : req.body[k];
+        data[k] = typeof req.body[k] === 'string' && req.body[k] === '' ? null : req.body[k];
       }
     }
 
@@ -109,7 +125,9 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
       },
     });
     res.json({ success: true, rule: updated });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // DELETE /assignment-rules/:id
@@ -118,7 +136,10 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
     const existing = await prisma.assignmentRule.findFirst({
       where: { id: req.params.id, tenantId: req.user!.tenantId },
     });
-    if (!existing) { res.status(404).json({ success: false, error: 'Rule not found' }); return; }
+    if (!existing) {
+      res.status(404).json({ success: false, error: 'Rule not found' });
+      return;
+    }
 
     const pmScope = await getPMScope(req);
     if (pmScope && !pmScope.includes(existing.customerId)) {
@@ -128,7 +149,9 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
 
     await prisma.assignmentRule.delete({ where: { id: req.params.id } });
     res.json({ success: true });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /assignment-rules/recommend — get agent recommendations for a ticket
@@ -143,13 +166,19 @@ router.post('/recommend', async (req: Request, res: Response, next: NextFunction
     // Find matching rule
     const rule = await findMatchingRule({
       tenantId: req.user!.tenantId,
-      customerId, recordType, priority, sapModuleId,
+      customerId,
+      recordType,
+      priority,
+      sapModuleId,
     });
 
     // Score agents
     const scores = await scoreAgents({
       tenantId: req.user!.tenantId,
-      customerId, priority, sapModuleId, sapSubModuleId,
+      customerId,
+      priority,
+      sapModuleId,
+      sapSubModuleId,
       preferredLevel: rule?.preferredLevel,
     });
 
@@ -160,7 +189,9 @@ router.post('/recommend', async (req: Request, res: Response, next: NextFunction
       recommendations: scores.slice(0, 5), // top 5
       allAgents: scores,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

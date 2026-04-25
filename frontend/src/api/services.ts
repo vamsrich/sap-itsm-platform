@@ -2,13 +2,10 @@ import { apiClient } from './client';
 
 // ── Auth API ──────────────────────────────────────────────────────────────────
 export const authApi = {
-  login: (email: string, password: string) =>
-    apiClient.post('/auth/login', { email, password }),
-  logout: (refreshToken: string) =>
-    apiClient.post('/auth/logout', { refreshToken }),
+  login: (email: string, password: string) => apiClient.post('/auth/login', { email, password }),
+  logout: (refreshToken: string) => apiClient.post('/auth/logout', { refreshToken }),
   me: () => apiClient.get('/auth/me'),
-  refresh: (refreshToken: string) =>
-    apiClient.post('/auth/refresh', { refreshToken }),
+  refresh: (refreshToken: string) => apiClient.post('/auth/refresh', { refreshToken }),
   changePassword: (currentPassword: string, newPassword: string) =>
     apiClient.post('/auth/change-password', { currentPassword, newPassword }),
 };
@@ -30,8 +27,7 @@ export interface RecordFilters {
 }
 
 export const recordsApi = {
-  list: (filters: RecordFilters = {}) =>
-    apiClient.get('/records', { params: filters }),
+  list: (filters: RecordFilters = {}) => apiClient.get('/records', { params: filters }),
   get: (id: string) => apiClient.get(`/records/${id}`),
   create: (data: object) => apiClient.post('/records', data),
   update: (id: string, data: object) => apiClient.patch(`/records/${id}`, data),
@@ -44,13 +40,13 @@ export const recordsApi = {
 
 // ── Agents API ────────────────────────────────────────────────────────────────
 export const agentsApi = {
-  list:     (params?: object)           => apiClient.get('/agents', { params }),
-  get:      (id: string)                => apiClient.get(`/agents/${id}`),
-  create:   (data: object)              => apiClient.post('/agents', data),
-  update:   (id: string, data: object)  => apiClient.patch(`/agents/${id}`, data),
-  delete:   (id: string)                => apiClient.delete(`/agents/${id}`),
+  list: (params?: object) => apiClient.get('/agents', { params }),
+  get: (id: string) => apiClient.get(`/agents/${id}`),
+  create: (data: object) => apiClient.post('/agents', data),
+  update: (id: string, data: object) => apiClient.patch(`/agents/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/agents/${id}`),
   updateSpecializations: (id: string, data: object) => apiClient.put(`/agents/${id}/specializations`, data),
-  linkUser: (data: object)              => apiClient.post('/agents/link-user', data),
+  linkUser: (data: object) => apiClient.post('/agents/link-user', data),
 };
 
 // ── Users API ─────────────────────────────────────────────────────────────────
@@ -72,27 +68,27 @@ export const customersApi = {
 
 // ── Contracts API ─────────────────────────────────────────────────────────────
 export const supportTypesApi = {
-  list:   (params?: object) => apiClient.get('/support-types', { params }),
-  get:    (id: string)      => apiClient.get(`/support-types/${id}`),
-  create: (data: object)    => apiClient.post('/support-types', data),
+  list: (params?: object) => apiClient.get('/support-types', { params }),
+  get: (id: string) => apiClient.get(`/support-types/${id}`),
+  create: (data: object) => apiClient.post('/support-types', data),
   update: (id: string, data: object) => apiClient.patch(`/support-types/${id}`, data),
-  delete: (id: string)      => apiClient.delete(`/support-types/${id}`),
+  delete: (id: string) => apiClient.delete(`/support-types/${id}`),
 };
 
 export const slaPoliciesApi = {
-  list:   (params?: object) => apiClient.get('/sla-policies', { params }),
-  get:    (id: string)      => apiClient.get(`/sla-policies/${id}`),
-  create: (data: object)    => apiClient.post('/sla-policies', data),
+  list: (params?: object) => apiClient.get('/sla-policies', { params }),
+  get: (id: string) => apiClient.get(`/sla-policies/${id}`),
+  create: (data: object) => apiClient.post('/sla-policies', data),
   update: (id: string, data: object) => apiClient.patch(`/sla-policies/${id}`, data),
-  delete: (id: string)      => apiClient.delete(`/sla-policies/${id}`),
+  delete: (id: string) => apiClient.delete(`/sla-policies/${id}`),
 };
 
 export const contractTypesApi = {
-  list:   (params?: object) => apiClient.get('/contract-types', { params }),
-  get:    (id: string)      => apiClient.get(`/contract-types/${id}`),
-  create: (data: object)    => apiClient.post('/contract-types', data),
+  list: (params?: object) => apiClient.get('/contract-types', { params }),
+  get: (id: string) => apiClient.get(`/contract-types/${id}`),
+  create: (data: object) => apiClient.post('/contract-types', data),
   update: (id: string, data: object) => apiClient.patch(`/contract-types/${id}`, data),
-  delete: (id: string)      => apiClient.delete(`/contract-types/${id}`),
+  delete: (id: string) => apiClient.delete(`/contract-types/${id}`),
 };
 
 export const contractsApi = {
@@ -134,7 +130,8 @@ export const holidaysApi = {
   create: (data: object) => apiClient.post('/holidays', data),
   update: (calendarId: string, data: object) => apiClient.patch(`/holidays/${calendarId}`, data),
   createDate: (calendarId: string, data: object) => apiClient.post(`/holidays/${calendarId}/dates`, data),
-  updateDate: (calendarId: string, dateId: string, data: object) => apiClient.patch(`/holidays/${calendarId}/dates/${dateId}`, data),
+  updateDate: (calendarId: string, dateId: string, data: object) =>
+    apiClient.patch(`/holidays/${calendarId}/dates/${dateId}`, data),
   deleteDate: (calendarId: string, dateId: string) => apiClient.delete(`/holidays/${calendarId}/dates/${dateId}`),
 };
 
@@ -185,20 +182,15 @@ export const dashboardApi = {
   customer: () => apiClient.get('/dashboard/customer'),
   agent: () => apiClient.get('/dashboard/agent'),
   user: () => apiClient.get('/dashboard/user'),
-  slaReport: (from?: string, to?: string) =>
-    apiClient.get('/dashboard/sla-report', { params: { from, to } }),
+  slaReport: (from?: string, to?: string) => apiClient.get('/dashboard/sla-report', { params: { from, to } }),
 };
 
 // ── Analytics API ─────────────────────────────────────────────────────────────
 export const analyticsApi = {
-  classification: (days?: number) =>
-    apiClient.get('/analytics/classification', { params: { days } }),
+  classification: (days?: number) => apiClient.get('/analytics/classification', { params: { days } }),
   patterns: (days?: number, threshold?: number) =>
     apiClient.get('/analytics/patterns', { params: { days, threshold } }),
-  rootCause: (days?: number) =>
-    apiClient.get('/analytics/root-cause', { params: { days } }),
-  knowledgeGaps: (days?: number) =>
-    apiClient.get('/analytics/knowledge-gaps', { params: { days } }),
-  similar: (recordId: string) =>
-    apiClient.get(`/analytics/similar/${recordId}`),
+  rootCause: (days?: number) => apiClient.get('/analytics/root-cause', { params: { days } }),
+  knowledgeGaps: (days?: number) => apiClient.get('/analytics/knowledge-gaps', { params: { days } }),
+  similar: (recordId: string) => apiClient.get(`/analytics/similar/${recordId}`),
 };
