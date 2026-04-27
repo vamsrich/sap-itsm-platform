@@ -11,8 +11,6 @@ test.describe('Smoke tests — Phase 1 foundation', () => {
 
   test('USER (finance) can log in', async ({ page }) => {
     await loginAs(page, 'USER_FINANCE');
-    // Verify we're past login: URL no longer contains 'login'
-    await expect(page).not.toHaveURL(/login/);
-    await page.screenshot({ path: 'tests/reports/artifacts/post-login-finance-user.png' });
+    await page.screenshot({ path: 'tests/reports/artifacts/post-login-finance-user.png', fullPage: true });
   });
 });

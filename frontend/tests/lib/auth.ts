@@ -31,10 +31,13 @@ export async function loginAs(page: Page, role: Role): Promise<void> {
 
   // Best-effort selectors — refine when we see the real login page in the smoke test
   await page.fill('input[type="email"], input[name="email"]', creds.email);
-  await page.fill('input[type="password"], input[name="password"]', creds.password);
+  await page.fill('input[placeholder="••••••••"]', creds.password);
   await page.click('button[type="submit"], button:has-text("Sign in"), button:has-text("Log in")');
 
-  // After login, we expect to land somewhere that's not the login page
-  // The exact post-login URL depends on the app — verify in the smoke test
-  await page.waitForURL((url) => !url.pathname.includes('login'), { timeout: 10000 });
+  // Post-login URL is hardcoded in src/pages/LoginPage.tsx (navigate('/dashboard'))
+  await page.waitForURL(/\/dashboard/, { timeout: 10000 });
+  await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+
+  // Wait for dashboard data to finish loading (occludes layout header)
+  await expect(page.getByText(/loading your tickets/i)).toBeHidden({ timeout: 15000 });
 }
