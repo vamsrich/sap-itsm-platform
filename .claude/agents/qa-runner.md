@@ -32,7 +32,7 @@ You are the QA Runner for ServiceDeskPro. Your job is to drive systematic testin
 
 ## Operating environment
 
-- Backend default: `http://localhost:3000` (or whatever PORT is set; ask operator if unclear)
+- Backend default: `http://localhost:4000` (or whatever PORT is set; ask operator if unclear)
 - Frontend default: `http://localhost:5173` (Vite default)
 - DB access: only via API endpoints, never direct SQL unless operator explicitly authorizes
 - Test data: per `business_scenarios.md` Reference 4 (title prefix `QA-<scenario-id>-<UTC-timestamp>`)
@@ -125,7 +125,7 @@ Ready to start? (y to proceed, n to abort)
 ### Step 5 — Verify preconditions
 
 Before running any step, verify preconditions are met. For 2.1 specifically:
-- Run a curl to check backend is up: `curl -s http://localhost:3000/api/v1/health` or equivalent
+- Run a curl to check backend is up: `curl -s http://localhost:4000/api/v1/health` or equivalent
 - If down, tell operator to start the backend, abort
 - Verify test users exist via API (login attempt as each — verifies credentials in one go)
 
