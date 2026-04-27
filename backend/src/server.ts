@@ -7,6 +7,7 @@ import { startSLAWorker } from './workers/sla.worker';
 import { startEmailWorker } from './workers/email.worker';
 import { startEscalationWorker } from './workers/escalation.worker';
 import { seedDatabase } from './seed';
+import { bootstrapIssueTemplates } from './services/issue-templates.service';
 import bcrypt from 'bcryptjs';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -121,6 +122,35 @@ async function bootstrap() {
       } catch (e: any) {
         logger.error('❌ AMS seed failed:', e?.message || e);
       }
+    }
+
+    // Bootstrap issue templates per-tenant (idempotent, preserves SA edits via manuallyEdited flag)
+    try {
+      const tenants = await prisma.tenant.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, slug: true },
+      });
+      let totalCreated = 0;
+      let totalUpdated = 0;
+      let totalSkipped = 0;
+      for (const t of tenants) {
+        const r = await bootstrapIssueTemplates(t.id);
+        totalCreated += r.created;
+        totalUpdated += r.updated;
+        totalSkipped += r.skipped;
+        logger.info(
+          `[issue-templates] tenant ${t.slug}: created=${r.created}, updated=${r.updated}, skipped=${r.skipped}`,
+        );
+      }
+      if (tenants.length > 0 && totalCreated + totalUpdated + totalSkipped === 0) {
+        logger.warn('[issue-templates] no template changes — possible bootstrap bug');
+      } else {
+        logger.info(
+          `[issue-templates] bootstrap complete: created=${totalCreated}, updated=${totalUpdated}, skipped=${totalSkipped} across ${tenants.length} tenant(s)`,
+        );
+      }
+    } catch (e: any) {
+      logger.warn('[issue-templates] bootstrap skipped:', e?.message || e);
     }
 
     await redis.ping();

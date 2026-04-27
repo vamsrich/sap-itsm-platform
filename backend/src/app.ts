@@ -27,6 +27,7 @@ import notificationInboxRoutes from './services/notifications/inbox.routes';
 import sapModuleRoutes from './api/routes/sapModule.routes';
 import assignmentRuleRoutes from './api/routes/assignmentRule.routes';
 import analyticsRoutes from './api/routes/analytics.routes';
+import issueTemplatesRoutes from './api/routes/issue-templates.routes';
 
 const app = express();
 
@@ -119,6 +120,7 @@ app.use(`${API}/notifications/inbox`, notificationInboxRoutes);
 app.use(`${API}/sap-modules`, sapModuleRoutes);
 app.use(`${API}/assignment-rules`, assignmentRuleRoutes);
 app.use(`${API}/analytics`, analyticsRoutes);
+app.use(`${API}/admin/issue-templates`, issueTemplatesRoutes);
 
 // ── Admin Endpoints (before error handlers!) ──────────────────────────────────
 app.post('/admin/fix-record-customers', async (_req, res) => {

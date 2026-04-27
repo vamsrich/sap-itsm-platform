@@ -2,6 +2,14 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { verifyJWT, enforceTenantScope, enforceRole } from '../middleware/auth.middleware';
 import { prisma } from '../../config/database';
 import { resolveAgent, resolveManagedCustomerIds } from './scopeHelpers';
+import {
+  classifyTickets,
+  clusterUnclassified,
+  toDbTemplate,
+  severityFor,
+  MatchableTicket,
+  DbTemplate,
+} from '../../services/issue-templates.service';
 
 const router = Router();
 router.use(verifyJWT, enforceTenantScope);
@@ -161,85 +169,178 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
 });
 
 // ── GET /analytics/patterns ────────────────────────────────────────────────────
-// Recurring incident clusters in rolling window
+// Pattern detection v1: Pass 1 (template matching) + Pass 2 (Jaccard clustering
+// on unclassified). Templates loaded from DB (IssueTemplate table, tenant-scoped).
 router.get('/patterns', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const scope = await buildAnalyticsScope(req);
     if (!scope) {
-      res.json({ success: true, patterns: [] });
+      res.json({
+        success: true,
+        patterns: [],
+        totalPatterns: 0,
+        highSeverity: 0,
+        unclassifiedCount: 0,
+        classificationRate: 0,
+      });
       return;
     }
 
     const { tenantId } = req.user!;
     const days = parseInt(req.query.days as string) || 30;
     const threshold = parseInt(req.query.threshold as string) || 3;
+    const pass2Threshold = parseFloat(req.query.pass2Threshold as string) || 0.5;
     const since = new Date(Date.now() - days * 86400000);
-    const baseWhere = { ...scope.where, createdAt: { gte: since }, recordType: 'INCIDENT' };
+    const baseWhere = { ...scope.where, createdAt: { gte: since }, recordType: 'INCIDENT' as any };
 
-    // Group by module + sub-module to find repeat patterns
-    const modulePatterns = await (prisma.iTSMRecord.groupBy as any)({
-      by: ['sapModuleId', 'sapSubModuleId'],
-      where: { ...baseWhere, sapModuleId: { not: null } },
-      _count: { id: true },
-      having: { id: { _count: { gte: threshold } } },
-      orderBy: { _count: { id: 'desc' } },
-    });
+    // Load tickets, templates, and SAP module masters in parallel
+    const [records, templateRows, moduleMasters, subModuleMasters] = await Promise.all([
+      prisma.iTSMRecord.findMany({
+        where: baseWhere,
+        select: {
+          id: true,
+          recordNumber: true,
+          title: true,
+          priority: true,
+          status: true,
+          createdAt: true,
+          sapModule: { select: { code: true, name: true } },
+          sapSubModule: { select: { code: true, name: true } },
+        },
+      }),
+      prisma.issueTemplate.findMany({
+        where: { tenantId, isActive: true },
+      }),
+      prisma.sAPModuleMaster.findMany({
+        where: { tenantId, isActive: true },
+        select: { id: true, code: true, name: true },
+      }),
+      prisma.sAPSubModuleMaster.findMany({
+        where: { tenantId },
+        select: { id: true, code: true, name: true },
+      }),
+    ]);
 
-    // Enrich with module names and sample tickets
-    const enriched = await Promise.all(
-      modulePatterns.map(async (p: any) => {
-        const [mod, subMod, samples, linked] = await Promise.all([
-          p.sapModuleId
-            ? prisma.sAPModuleMaster.findUnique({
-                where: { id: p.sapModuleId },
-                select: { code: true, name: true },
-              })
-            : null,
-          p.sapSubModuleId
-            ? prisma.sAPSubModuleMaster.findUnique({
-                where: { id: p.sapSubModuleId },
-                select: { code: true, name: true },
-              })
-            : null,
-          // Sample 3 recent tickets for this pattern
-          prisma.iTSMRecord.findMany({
-            where: { ...baseWhere, sapModuleId: p.sapModuleId, sapSubModuleId: p.sapSubModuleId },
-            select: { id: true, recordNumber: true, title: true, priority: true, status: true, createdAt: true },
-            orderBy: { createdAt: 'desc' },
-            take: 3,
-          }),
-          // Check if a Problem record exists for this module in the window
-          prisma.iTSMRecord.count({
+    // Build code → master maps (for legacy moduleCode/moduleName/moduleId fields)
+    const moduleByCode = new Map(moduleMasters.map((m) => [m.code, m]));
+    const subModuleByCode = new Map(subModuleMasters.map((sm) => [sm.code, sm]));
+
+    const tickets: MatchableTicket[] = records.map((r) => ({
+      id: r.id,
+      recordNumber: r.recordNumber,
+      title: r.title,
+      priority: r.priority,
+      status: r.status,
+      createdAt: r.createdAt,
+      module: r.sapModule?.code ?? null,
+      subModule: r.sapSubModule?.code ?? null,
+    }));
+    const templates: DbTemplate[] = templateRows.map(toDbTemplate);
+
+    // Pass 1: template matching
+    const { byTemplate, unclassified } = classifyTickets(tickets, templates);
+
+    // Pass 2: Jaccard clustering on what didn't match a template
+    const clusters = clusterUnclassified(unclassified, pass2Threshold, threshold);
+
+    // Build template-pattern objects (only those at or above threshold)
+    const templatePatterns = await Promise.all(
+      Array.from(byTemplate.entries())
+        .filter(([, tks]) => tks.length >= threshold)
+        .map(async ([tplId, tks]) => {
+          const tpl = templateRows.find((t) => t.id === tplId)!;
+          const problemCount = await prisma.iTSMRecord.count({
             where: {
               ...scope.where,
-              recordType: 'PROBLEM',
-              sapModuleId: p.sapModuleId,
+              recordType: 'PROBLEM' as any,
+              sapModule: { is: { code: tpl.module } },
               createdAt: { gte: since },
             },
-          }),
-        ]);
+          });
+          const modMaster = moduleByCode.get(tpl.module);
+          const subModMaster = tpl.subModule ? subModuleByCode.get(tpl.subModule) : null;
+          return {
+            kind: 'template' as const,
+            templateId: tpl.id,
+            templateKey: tpl.templateKey,
+            label: tpl.label,
+            module: tpl.module,
+            subModule: tpl.subModule,
+            // Legacy compat fields (so existing frontend renders unchanged)
+            moduleId: modMaster?.id ?? null,
+            moduleCode: tpl.module,
+            moduleName: modMaster?.name ?? tpl.module,
+            subModuleCode: tpl.subModule ?? null,
+            subModuleName: subModMaster?.name ?? null,
+            count: tks.length,
+            severity: severityFor(tks.length),
+            hasProblemRecord: problemCount > 0,
+            samples: tks.slice(0, 3).map((t) => ({
+              id: t.id,
+              recordNumber: t.recordNumber,
+              title: t.title,
+              priority: t.priority,
+              status: t.status,
+              createdAt: t.createdAt,
+            })),
+          };
+        }),
+    );
 
+    // Build emergent-pattern objects (already gated by minSize=threshold inside the clusterer)
+    const emergentPatterns = await Promise.all(
+      clusters.map(async (c) => {
+        const problemCount = await prisma.iTSMRecord.count({
+          where: {
+            ...scope.where,
+            recordType: 'PROBLEM' as any,
+            sapModule: { is: { code: c.module } },
+            createdAt: { gte: since },
+          },
+        });
+        const modMaster = moduleByCode.get(c.module);
         return {
-          moduleId: p.sapModuleId,
-          subModuleId: p.sapSubModuleId,
-          moduleCode: mod?.code || 'UNKNOWN',
-          moduleName: mod?.name || 'Unknown Module',
-          subModuleCode: subMod?.code || null,
-          subModuleName: subMod?.name || null,
-          count: p._count.id,
-          hasProblemRecord: linked > 0,
-          severity: p._count.id >= 8 ? 'high' : p._count.id >= 5 ? 'medium' : 'low',
-          samples,
+          kind: 'emergent' as const,
+          label: c.tokens.length > 0 ? `Emergent: ${c.tokens.join(' + ')}` : `Emergent: ${c.module} cluster`,
+          module: c.module,
+          subModule: null as string | null,
+          // Legacy compat fields
+          moduleId: modMaster?.id ?? null,
+          moduleCode: c.module,
+          moduleName: modMaster?.name ?? c.module,
+          subModuleCode: null as string | null,
+          subModuleName: null as string | null,
+          count: c.tickets.length,
+          severity: severityFor(c.tickets.length),
+          hasProblemRecord: problemCount > 0,
+          tokens: c.tokens,
+          samples: c.tickets.slice(0, 3).map((t) => ({
+            id: t.id,
+            recordNumber: t.recordNumber,
+            title: t.title,
+            priority: t.priority,
+            status: t.status,
+            createdAt: t.createdAt,
+          })),
         };
       }),
     );
 
+    const patterns = [...templatePatterns, ...emergentPatterns].sort((a, b) => b.count - a.count);
+
+    const classified = Array.from(byTemplate.values()).reduce((s, v) => s + v.length, 0);
+    const emergentTotal = clusters.reduce((s, c) => s + c.tickets.length, 0);
+    const classificationRate =
+      tickets.length > 0 ? Math.round(((classified + emergentTotal) / tickets.length) * 100) / 100 : 0;
+
     res.json({
       success: true,
-      period: { days, threshold },
-      patterns: enriched,
-      totalPatterns: enriched.length,
-      highSeverity: enriched.filter((p: any) => p.severity === 'high').length,
+      period: { days, threshold, pass2Threshold },
+      patterns,
+      totalPatterns: patterns.length,
+      highSeverity: patterns.filter((p) => p.severity === 'high').length,
+      unclassifiedCount: tickets.length - classified - emergentTotal,
+      classificationRate,
     });
   } catch (err) {
     next(err);

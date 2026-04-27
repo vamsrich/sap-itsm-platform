@@ -390,7 +390,7 @@ export default function ClassificationPage() {
                         }`}
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
                             {p.moduleCode}
                           </span>
@@ -399,8 +399,12 @@ export default function ClassificationPage() {
                               {p.subModuleCode}
                             </span>
                           )}
-                          <span className="text-sm font-medium text-gray-900">{p.moduleName}</span>
-                          {p.subModuleName && <span className="text-sm text-gray-500">/ {p.subModuleName}</span>}
+                          {p.kind === 'emergent' && (
+                            <span className="text-[10px] font-semibold text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                              Emergent
+                            </span>
+                          )}
+                          <span className="text-sm font-semibold text-gray-900">{p.label || p.moduleName}</span>
                         </div>
                         <p className="text-xs text-gray-500 mb-3">
                           <span className="font-semibold text-gray-800">{p.count} incidents</span> in the last {days}{' '}
@@ -409,6 +413,9 @@ export default function ClassificationPage() {
                             <span className="ml-2 text-green-600 font-medium">✓ Problem record exists</span>
                           ) : (
                             <span className="ml-2 text-red-600 font-medium">✗ No Problem record</span>
+                          )}
+                          {p.kind === 'emergent' && p.tokens && p.tokens.length > 0 && (
+                            <span className="ml-2 text-orange-700">· tokens: {p.tokens.join(', ')}</span>
                           )}
                         </p>
                         {/* Sample tickets */}

@@ -187,6 +187,7 @@ model Tenant {
   notificationRules NotificationRule[]
   notifications     Notification[]
   emailTemplates    EmailTemplate[]
+  issueTemplates    IssueTemplate[]
 
   @@map("tenants")
 }
@@ -886,4 +887,40 @@ model NotificationPreference {
 
   @@unique([userId, event])
   @@map("notification_preferences")
+}
+
+// ── ISSUE TEMPLATES ──────────────────────────────────────────
+
+model IssueTemplate {
+  id                 String  @id @default(uuid())
+  tenantId           String  @map("tenant_id")
+  enterpriseSystemId String? @map("enterprise_system_id")
+  module             String
+  subModule          String? @map("sub_module")
+  templateKey        String  @map("template_key")
+  label              String
+
+  // Matching rules — JSON for shape flexibility
+  // must:  string[][]  (AND across groups, OR within)
+  // boost: string[]
+  // not:   string[]
+  must  Json
+  boost Json?
+  not   Json?
+
+  // Lifecycle
+  isActive       Boolean @default(true)  @map("is_active")
+  isSystemSeed   Boolean @default(false) @map("is_system_seed")
+  manuallyEdited Boolean @default(false) @map("manually_edited")
+  createdById    String? @map("created_by_id")
+  notes          String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, templateKey])
+  @@index([tenantId, module, isActive])
+  @@map("issue_templates")
 }

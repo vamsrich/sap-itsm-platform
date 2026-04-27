@@ -94,6 +94,7 @@ When adding a new endpoint, check it against the visibility matrix in the v34 ha
 - **`AMS_SEED_ON_BOOT`:** Should be `false` in Railway env vars after successful seed.
 - **Schema:** No `aiClassification` field on `ITSMRecord` yet (Phase 1.3 pending).
 - **Railway deployment is dev/staging, not real production.** The Railway subdomains contain "production" (Railway naming), but no real customer traffic flows there. Test data and experiments are acceptable. When real customer-facing production launches later, this note and the qa-runner agent's defensive rules must be updated.
+- **Issue Pattern Detection v1 shipped.** `/analytics/patterns` now uses DB-backed issue templates (table `issue_templates`, 27 SAP-domain-aware templates seeded per tenant on boot) for Pass-1 classification, plus Jaccard clustering (Pass-2) on whatever doesn't match a template. Calibrated against Railway seed data: 100% classification rate, 7 visible patterns at default threshold of 3. Templates editable at runtime is Phase 2 (today: read-only viewer at `GET /api/v1/admin/issue-templates`). Bootstrap is auto-on-boot, idempotent, preserves SA edits via `manuallyEdited` flag.
 
 ### Open issues to address
 
