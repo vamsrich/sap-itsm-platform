@@ -28,7 +28,7 @@ These are AMS seed users (loaded by `backend/src/ams-seed.ts`). Use these for lo
 
 | Email | Password | Role | Notes |
 | --- | --- | --- | --- |
-| `admin@intraedge.com` | `Admin@123` | SUPER_ADMIN | Full tenant access |
+| `admin@intraedge.com` | `Admin@123456` | SUPER_ADMIN | Full tenant access |
 | `priya.sharma@intraedge.com` | `Admin@123456` | PROJECT_MANAGER | Manages GlobalManufacturing AG |
 | `rajesh.kumar@intraedge.com` | `Admin@123456` | AGENT | FICO specialist (L3) |
 | `anitha.reddy@intraedge.com` | `Admin@123456` | AGENT | MM specialist (L3) |

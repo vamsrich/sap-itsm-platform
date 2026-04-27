@@ -319,7 +319,7 @@ git add . && git commit -m "message" && git push origin main
 
 ## Default credentials (dev/staging only)
 
-- **Super Admin:** `admin@intraedge.com` / `Admin@123`
+- **Super Admin:** `admin@intraedge.com` / `Admin@123456`
 - **AMS seed users** (after AMS seed completes, password `Admin@123456`):
   - PM: `priya.sharma@intraedge.com`
   - FICO Agent: `rajesh.kumar@intraedge.com`
