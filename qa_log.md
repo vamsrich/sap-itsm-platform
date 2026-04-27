@@ -115,13 +115,21 @@ Test basis:
 
 ---
 
-## QA Pass 1 — (template — not yet started)
-
-When the QA agent runs scenarios for the first time, defects found get logged here under "QA Pass 1" with sequential `BUG-NNN` IDs continuing from BUG-002.
+## QA Pass 1 — First agent-driven run (April 27)
 
 Test basis:
-- Will be populated when first agent-driven scenario run happens
-- Format for each entry follows BUG-001/BUG-002 above
+- First session of agent-driven execution against the catalog
+- Backend port: `localhost:4000` (qa-runner.md had `:3000` baked in; corrected in commit `a0b4338`)
+- Defects found get logged here with sequential `BUG-NNN` IDs continuing from BUG-002
+- Format for defect entries follows BUG-001 / BUG-002 above
+
+### Skipped runs
+
+Scenarios that could not be executed due to environment / precondition gaps. These are NOT defects — they're environment notes.
+
+| Run timestamp (UTC) | Scenario | Mode | Reason |
+| --- | --- | --- | --- |
+| 2026-04-27T04:58:49Z | 2.1 — Ticket creation + initial notifications | manual-guided | Backend not running on `localhost:4000` (connect refused on `/api/v1/health`). Operator chose to abort rather than start backend. |
 
 ---
 
