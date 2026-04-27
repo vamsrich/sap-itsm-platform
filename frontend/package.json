@@ -8,7 +8,10 @@
     "preview": "vite preview",
     "start": "serve -s dist -l ${PORT:-3000}",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives",
-    "prebuild": "echo \"Build 20260227_123827\""
+    "prebuild": "echo \"Build 20260227_123827\"",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.24.1",
@@ -25,6 +28,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.2.1",
