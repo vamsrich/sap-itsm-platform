@@ -105,6 +105,14 @@ Valid transitions for `ITSMRecord.status`. Agent uses this to validate scenarios
 
 ### Reference 4: Test data conventions
 
+- **Test environment**: scenarios run against one of two environments — operator chooses at session start:
+  - **Local:** backend `http://localhost:4000`, frontend `http://localhost:5173`
+  - **Railway (dev/staging):**
+    - Frontend: `https://sap-itsm-platform-production.up.railway.app`
+    - Backend:  `https://servicedesk-production-f664.up.railway.app`
+
+  > Despite "production" appearing in the Railway subdomains (Railway deployment-naming convention), this is the dev/staging environment. No real customer traffic. Real production deployment has NOT happened yet — when it does, this section gets updated to ban it.
+
 - **Title prefix**: `QA-<scenario-id>-<UTC-timestamp>` — example: `QA-2.1-20260427-103000`
 - **Description**: Should include `[QA TEST]` marker so it's filterable
 - **Cleanup**: Default = leave data for audit history. Scenarios that REQUIRE cleanup state it explicitly under `Cleanup`.

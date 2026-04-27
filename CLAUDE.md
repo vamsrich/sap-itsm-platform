@@ -93,6 +93,7 @@ When adding a new endpoint, check it against the visibility matrix in the v34 ha
 - **AMS seed:** Completed successfully. GlobalManufacturing AG with 82 tickets loaded.
 - **`AMS_SEED_ON_BOOT`:** Should be `false` in Railway env vars after successful seed.
 - **Schema:** No `aiClassification` field on `ITSMRecord` yet (Phase 1.3 pending).
+- **Railway deployment is dev/staging, not real production.** The Railway subdomains contain "production" (Railway naming), but no real customer traffic flows there. Test data and experiments are acceptable. When real customer-facing production launches later, this note and the qa-runner agent's defensive rules must be updated.
 
 ### Open issues to address
 
