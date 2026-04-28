@@ -143,6 +143,8 @@ router.get('/sla-report', async (req: Request, res: Response, next: NextFunction
     const scope = await buildScopeWhere(req);
     const emptySla = {
       success: true,
+      metrics: { totalRecords: 0, responseMetPct: 0, resolutionMetPct: 0, breaches: 0 },
+      byPriority: [],
       summary: { total: 0, breachResponse: 0, breachResolution: 0, compliant: 0 },
       records: [],
     };
@@ -172,14 +174,37 @@ router.get('/sla-report', async (req: Request, res: Response, next: NextFunction
       take: 500,
     });
 
+    const total = slaData.length;
+    const breachResponseCount = slaData.filter((s: any) => s.breachResponse).length;
+    const breachResolutionCount = slaData.filter((s: any) => s.breachResolution).length;
+    const compliant = slaData.filter((s: any) => !s.breachResponse && !s.breachResolution).length;
+    const breaches = slaData.filter((s: any) => s.breachResponse || s.breachResolution).length;
+
     const summary = {
-      total: slaData.length,
-      breachResponse: slaData.filter((s: any) => s.breachResponse).length,
-      breachResolution: slaData.filter((s: any) => s.breachResolution).length,
-      compliant: slaData.filter((s: any) => !s.breachResponse && !s.breachResolution).length,
+      total,
+      breachResponse: breachResponseCount,
+      breachResolution: breachResolutionCount,
+      compliant,
     };
 
-    res.json({ success: true, summary, records: slaData });
+    // Frontend SLAReportPage reads metrics + byPriority shape
+    const metrics = {
+      totalRecords: total,
+      responseMetPct: total > 0 ? Math.round(((total - breachResponseCount) / total) * 100) : 0,
+      resolutionMetPct: total > 0 ? Math.round(((total - breachResolutionCount) / total) * 100) : 0,
+      breaches,
+    };
+
+    const priorityCounts: Record<string, number> = {};
+    for (const s of slaData) {
+      const p = (s as any).record?.priority;
+      if (p) priorityCounts[p] = (priorityCounts[p] || 0) + 1;
+    }
+    const byPriority = ['P1', 'P2', 'P3', 'P4']
+      .map((priority) => ({ priority, count: priorityCounts[priority] || 0 }))
+      .filter((row) => row.count > 0);
+
+    res.json({ success: true, metrics, byPriority, summary, records: slaData });
   } catch (err) {
     next(err);
   }

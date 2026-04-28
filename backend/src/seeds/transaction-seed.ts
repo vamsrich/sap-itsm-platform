@@ -73,6 +73,8 @@ async function main() {
   let slaDeleted = 0;
   let slaSkipped = 0;
 
+  let respondedAtBackfilled = 0;
+
   if (contract.slaPolicyMaster) {
     const priorities = (contract.slaPolicyMaster.priorities || {}) as Record<
       string,
@@ -99,17 +101,37 @@ async function main() {
       const responseDeadline = new Date(r.createdAt.getTime() + targets.response * 60 * 1000);
       const resolutionDeadline = new Date(r.createdAt.getTime() + targets.resolution * 60 * 1000);
 
-      // Recompute breach against actuals
+      // Backfill respondedAt for resolved/closed records that don't have one.
+      // The AMS seed never populated respondedAt — without this backfill, the breach
+      // recompute below has no actual response timestamp and would over-mark every
+      // record as response-breached. Place respondedAt at 40-90% of the response budget
+      // (so most records show as in-time response), capped at 1 min before resolvedAt
+      // to maintain temporal ordering.
+      let effectiveRespondedAt = r.respondedAt;
+      if (!effectiveRespondedAt && ['RESOLVED', 'CLOSED'].includes(r.status) && r.resolvedAt) {
+        const respondedFraction = 0.4 + Math.random() * 0.5; // 40-90% of response budget
+        const candidate = r.createdAt.getTime() + targets.response * 60 * 1000 * respondedFraction;
+        const maxAllowed = r.resolvedAt.getTime() - 60_000;
+        effectiveRespondedAt = new Date(Math.min(candidate, maxAllowed));
+        await prisma.iTSMRecord.update({
+          where: { id: r.id },
+          data: { respondedAt: effectiveRespondedAt },
+        });
+        respondedAtBackfilled++;
+      }
+
+      // Recompute breach against actuals.
       let breachResponse: boolean;
       let breachResolution: boolean;
       if (r.status === 'CANCELLED') {
         breachResponse = false;
         breachResolution = false;
       } else {
-        // For response: prefer respondedAt; if missing, fall back to resolvedAt; if still
-        // missing, the record is open — compare against now.
-        const responseRef = r.respondedAt ?? r.resolvedAt ?? now;
-        // For resolution: resolvedAt if present, else open — compare against now.
+        // Response: use effectiveRespondedAt if known. If still null (open ticket
+        // never responded), compare now to deadline. Do NOT fall back to resolvedAt —
+        // that overstates breach for resolved tickets that genuinely responded in time
+        // but weren't recorded.
+        const responseRef = effectiveRespondedAt ?? now;
         const resolutionRef = r.resolvedAt ?? now;
         breachResponse = responseRef.getTime() > responseDeadline.getTime();
         breachResolution = resolutionRef.getTime() > resolutionDeadline.getTime();
@@ -118,7 +140,13 @@ async function main() {
       if (r.slaTracking) {
         await prisma.sLATracking.update({
           where: { id: r.slaTracking.id },
-          data: { responseDeadline, resolutionDeadline, breachResponse, breachResolution },
+          data: {
+            responseDeadline,
+            resolutionDeadline,
+            breachResponse,
+            breachResolution,
+            respondedAt: effectiveRespondedAt,
+          },
         });
         slaUpdated++;
       } else {
@@ -129,6 +157,7 @@ async function main() {
             resolutionDeadline,
             breachResponse,
             breachResolution,
+            respondedAt: effectiveRespondedAt,
           },
         });
         slaCreated++;
@@ -136,8 +165,9 @@ async function main() {
     }
 
     console.log(
-      `✅ Pass A — SLA: ${slaUpdated} updated, ${slaCreated} created, ${slaDeleted} deleted (no policy entry), ${slaSkipped} skipped (no SLATracking, no policy entry)`,
+      `✅ Pass A — SLA: ${slaUpdated} updated, ${slaCreated} created, ${slaDeleted} deleted (no policy entry), ${slaSkipped} skipped`,
     );
+    console.log(`   ↳ respondedAt backfilled on ${respondedAtBackfilled} records (was null)`);
   } else {
     console.log('⚠️  Pass A skipped — contract has no SLA policy assigned');
   }
