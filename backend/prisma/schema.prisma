@@ -254,11 +254,13 @@ model Agent {
   maxConcurrent  Int         @default(5) @map("max_concurrent")
   agentType      AgentType   @default(AGENT) @map("agent_type")
   status         AgentStatus @default(AVAILABLE)
+  shiftId        String?     @map("shift_id")
   metadata       Json?       @default("{}")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
   user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shift            Shift?              @relation(fields: [shiftId], references: [id])
   assignments      ITSMRecord[]
   timeEntries      TimeEntry[]
   managedCustomers Customer[]          @relation("CustomerPM")
@@ -519,6 +521,7 @@ model Shift {
 
   tenant    Tenant          @relation(fields: [tenantId], references: [id])
   contracts ContractShift[]
+  agents    Agent[]
 
   @@index([tenantId])
   @@map("shifts")

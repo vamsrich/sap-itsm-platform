@@ -28,6 +28,7 @@ import sapModuleRoutes from './api/routes/sapModule.routes';
 import assignmentRuleRoutes from './api/routes/assignmentRule.routes';
 import analyticsRoutes from './api/routes/analytics.routes';
 import issueTemplatesRoutes from './api/routes/issue-templates.routes';
+import slaPolicyRoutes from './api/routes/slaPolicy.routes';
 
 const app = express();
 
@@ -121,6 +122,7 @@ app.use(`${API}/sap-modules`, sapModuleRoutes);
 app.use(`${API}/assignment-rules`, assignmentRuleRoutes);
 app.use(`${API}/analytics`, analyticsRoutes);
 app.use(`${API}/admin/issue-templates`, issueTemplatesRoutes);
+app.use(`${API}/sla-policies`, slaPolicyRoutes);
 
 // ── Admin Endpoints (before error handlers!) ──────────────────────────────────
 app.post('/admin/fix-record-customers', async (_req, res) => {
