@@ -74,6 +74,7 @@ async function main() {
   let slaSkipped = 0;
 
   let respondedAtBackfilled = 0;
+  let resolvedAtRewritten = 0;
 
   if (contract.slaPolicyMaster) {
     const priorities = (contract.slaPolicyMaster.priorities || {}) as Record<
@@ -101,38 +102,82 @@ async function main() {
       const responseDeadline = new Date(r.createdAt.getTime() + targets.response * 60 * 1000);
       const resolutionDeadline = new Date(r.createdAt.getTime() + targets.resolution * 60 * 1000);
 
-      // Backfill respondedAt for resolved/closed records that don't have one.
-      // The AMS seed never populated respondedAt — without this backfill, the breach
-      // recompute below has no actual response timestamp and would over-mark every
-      // record as response-breached. Place respondedAt at 40-90% of the response budget
-      // (so most records show as in-time response), capped at 1 min before resolvedAt
-      // to maintain temporal ordering.
+      // ── Rewrite resolvedAt for RESOLVED/CLOSED records ─────────────────────
+      // The AMS seed has uniform "createdDaysAgo - resolvedDaysAgo = 1-2 days"
+      // regardless of priority. That makes P1/P2 tickets (8h/24h targets) look
+      // universally breached and inflates avg MTTR to ~25h. Realistic AMS data
+      // varies resolution time per priority within the SLA budget.
+      //
+      // Distribution:
+      //   80% compliant: 40-90% of resolution budget (typical resolution speed)
+      //   15% close-call: 90-105% (mostly compliant, some borderline breach)
+      //    5% genuine breach: 105-150% (natural variance, real-world breaches)
+      //
+      // Per-priority effect (with SILVER-STD targets):
+      //   P1 (8h):    MTTR ~3-7h compliant, ~9-12h breach
+      //   P2 (24h):   MTTR ~10-22h compliant, ~26-36h breach
+      //   P3 (72h):   MTTR ~29-65h compliant, ~76-108h breach
+      //   P4 (120h):  MTTR ~48-108h compliant, ~126-180h breach
+      let effectiveResolvedAt = r.resolvedAt;
+      let effectiveClosedAt = r.closedAt;
+      if (r.resolvedAt && ['RESOLVED', 'CLOSED'].includes(r.status)) {
+        const roll = Math.random();
+        let fraction: number;
+        if (roll < 0.80) {
+          fraction = 0.4 + Math.random() * 0.5;
+        } else if (roll < 0.95) {
+          fraction = 0.9 + Math.random() * 0.15;
+        } else {
+          fraction = 1.05 + Math.random() * 0.45;
+        }
+        const newResolvedAtMs =
+          r.createdAt.getTime() + targets.resolution * 60 * 1000 * fraction;
+        effectiveResolvedAt = new Date(newResolvedAtMs);
+        // For CLOSED records, closedAt was originally set to resolvedAt — keep that link
+        if (r.status === 'CLOSED' && r.closedAt) {
+          effectiveClosedAt = effectiveResolvedAt;
+        }
+        await prisma.iTSMRecord.update({
+          where: { id: r.id },
+          data: {
+            resolvedAt: effectiveResolvedAt,
+            ...(r.status === 'CLOSED' && r.closedAt ? { closedAt: effectiveClosedAt } : {}),
+          },
+        });
+        // Mutate local record so Pass B (TimeEntry seed) uses the new resolvedAt
+        // for workDate range.
+        r.resolvedAt = effectiveResolvedAt;
+        if (r.status === 'CLOSED') r.closedAt = effectiveClosedAt;
+        resolvedAtRewritten++;
+      }
+
+      // ── Backfill respondedAt for resolved/closed records that don't have one ──
+      // Place respondedAt at 40-90% of the response budget (most records show
+      // in-time response), capped at 1 min before effectiveResolvedAt to
+      // maintain temporal ordering.
       let effectiveRespondedAt = r.respondedAt;
-      if (!effectiveRespondedAt && ['RESOLVED', 'CLOSED'].includes(r.status) && r.resolvedAt) {
+      if (!effectiveRespondedAt && ['RESOLVED', 'CLOSED'].includes(r.status) && effectiveResolvedAt) {
         const respondedFraction = 0.4 + Math.random() * 0.5; // 40-90% of response budget
         const candidate = r.createdAt.getTime() + targets.response * 60 * 1000 * respondedFraction;
-        const maxAllowed = r.resolvedAt.getTime() - 60_000;
+        const maxAllowed = effectiveResolvedAt.getTime() - 60_000;
         effectiveRespondedAt = new Date(Math.min(candidate, maxAllowed));
         await prisma.iTSMRecord.update({
           where: { id: r.id },
           data: { respondedAt: effectiveRespondedAt },
         });
+        r.respondedAt = effectiveRespondedAt;
         respondedAtBackfilled++;
       }
 
-      // Recompute breach against actuals.
+      // ── Recompute breach against actuals ──
       let breachResponse: boolean;
       let breachResolution: boolean;
       if (r.status === 'CANCELLED') {
         breachResponse = false;
         breachResolution = false;
       } else {
-        // Response: use effectiveRespondedAt if known. If still null (open ticket
-        // never responded), compare now to deadline. Do NOT fall back to resolvedAt —
-        // that overstates breach for resolved tickets that genuinely responded in time
-        // but weren't recorded.
         const responseRef = effectiveRespondedAt ?? now;
-        const resolutionRef = r.resolvedAt ?? now;
+        const resolutionRef = effectiveResolvedAt ?? now;
         breachResponse = responseRef.getTime() > responseDeadline.getTime();
         breachResolution = resolutionRef.getTime() > resolutionDeadline.getTime();
       }
@@ -166,6 +211,9 @@ async function main() {
 
     console.log(
       `✅ Pass A — SLA: ${slaUpdated} updated, ${slaCreated} created, ${slaDeleted} deleted (no policy entry), ${slaSkipped} skipped`,
+    );
+    console.log(
+      `   ↳ resolvedAt rewritten on ${resolvedAtRewritten} records (~80% compliant, ~15% close-call, ~5% breach distribution)`,
     );
     console.log(`   ↳ respondedAt backfilled on ${respondedAtBackfilled} records (was null)`);
   } else {
