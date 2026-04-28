@@ -101,19 +101,19 @@ export default function ContractFormPage() {
   }, [existingContract]);
 
   const { data: customersData } = useCustomers({ limit: 100 });
-  const { data: shiftsData } = useQuery({
+  const { data: shiftsData, isLoading: shiftsLoading } = useQuery({
     queryKey: ['shifts'],
     queryFn: () => shiftsApi.list().then((r) => r.data.shifts || []),
   });
-  const { data: holidaysData } = useQuery({
+  const { data: holidaysData, isLoading: holidaysLoading } = useQuery({
     queryKey: ['holidays'],
     queryFn: () => holidaysApi.list().then((r) => r.data.calendars || []),
   });
-  const { data: stData } = useQuery({
+  const { data: stData, isLoading: stLoading } = useQuery({
     queryKey: ['support-types'],
     queryFn: () => supportTypesApi.list().then((r) => r.data.types || []),
   });
-  const { data: slaData } = useQuery({
+  const { data: slaData, isLoading: slaLoading } = useQuery({
     queryKey: ['sla-policies'],
     queryFn: () => slaPoliciesApi.list().then((r) => r.data.policies || []),
   });
@@ -258,7 +258,9 @@ export default function ContractFormPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Support Shifts <span className="text-xs text-gray-400 ml-1">(select one or more)</span>
               </label>
-              {shifts.length === 0 ? (
+              {shiftsLoading ? (
+                <p className="text-xs text-gray-400">Loading shifts…</p>
+              ) : shifts.length === 0 ? (
                 <p className="text-xs text-amber-600">
                   💡 No shifts defined —{' '}
                   <a href="/shifts" className="underline">
@@ -307,7 +309,7 @@ export default function ContractFormPage() {
                   </option>
                 ))}
               </select>
-              {supportTypes.length === 0 && (
+              {!stLoading && supportTypes.length === 0 && (
                 <p className="text-xs text-amber-600 mt-1">
                   💡 No support types —{' '}
                   <a href="/support-types" className="underline">
@@ -340,7 +342,9 @@ export default function ContractFormPage() {
 
             {/* Holiday Calendar */}
             <F label="Holiday Calendars" hint="Holidays excluded from SLA working-hours calculation">
-              {holidays.length === 0 ? (
+              {holidaysLoading ? (
+                <p className="text-xs text-gray-400">Loading calendars…</p>
+              ) : holidays.length === 0 ? (
                 <p className="text-xs text-gray-400 italic">No holiday calendars configured.</p>
               ) : (
                 <div className="grid grid-cols-3 gap-3">
@@ -385,7 +389,7 @@ export default function ContractFormPage() {
                 </option>
               ))}
             </select>
-            {slaPolicies.length === 0 && (
+            {!slaLoading && slaPolicies.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">
                 💡 No SLA policies —{' '}
                 <a href="/sla-policies" className="underline">

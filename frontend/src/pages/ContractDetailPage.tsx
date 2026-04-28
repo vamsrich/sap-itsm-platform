@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { contractsApi, shiftsApi, holidaysApi } from '../api/services';
+import { useQuery } from '@tanstack/react-query';
+import { contractsApi } from '../api/services';
 import { format } from 'date-fns';
 import { ArrowLeft, FileText, Pencil, History } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
@@ -22,6 +22,7 @@ const SLA_DESCS = {
   P3: 'Minor issue. Workaround available.',
   P4: 'General query or low-impact issue.',
 } as Record<string, string>;
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function Row({ label, value }: { label: string; value?: string | React.ReactNode }) {
   return (
@@ -69,29 +70,22 @@ export default function ContractDetailPage() {
     queryFn: () => contractsApi.changelog(id!).then((r) => r.data.logs || []),
     enabled: showChangelog,
   });
-  const { data: shiftsData } = useQuery({
-    queryKey: ['shifts'],
-    queryFn: () => shiftsApi.list().then((r) => r.data.data || []),
-  });
-  const { data: holidaysData } = useQuery({
-    queryKey: ['holidays'],
-    queryFn: () => holidaysApi.list().then((r) => r.data.data || []),
-  });
-
-  const shifts: any[] = shiftsData || [];
-  const holidays: any[] = holidaysData || [];
 
   if (isLoading) return <div className="p-10 text-center text-gray-400">Loading contract...</div>;
   if (!data) return <div className="p-10 text-center text-red-400">Contract not found</div>;
 
   const c = data;
   const expired = new Date(c.endDate) < new Date();
-  const contractShiftIds: string[] = (c.shifts || []).map((s: any) => s.shiftId || s.id);
-  const assignedShifts = shifts.filter((s) => contractShiftIds.includes(s.id));
-  const cal = holidays.find((h: any) => h.id === c.holidayCalendarId);
-  const slaP = c.slaConfig?.priorities || c.slaConfig || {};
-  const slaCfg = c.slaConfig || {};
-  const pauseConditions: string[] = slaCfg.pauseConditions || [];
+  const isActive = c.isActive !== false;
+  const supportType = c.supportTypeMaster;
+  const slaPolicy = c.slaPolicyMaster;
+  // Contract response from GET /:id includes nested shifts and holiday calendars via Prisma include
+  const shifts = (c.shifts || []).map((s: any) => s.shift).filter(Boolean);
+  const holidayCalendars = (c.holidayCalendars || []).map((h: any) => h.holidayCalendar).filter(Boolean);
+  const priorities = (slaPolicy?.priorities || {}) as Record<
+    string,
+    { response: number; resolution: number; enabled?: boolean }
+  >;
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -108,21 +102,22 @@ export default function ContractDetailPage() {
             <FileText className="w-5 h-5 text-white" />
           </div>
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-xl font-bold text-gray-900 font-mono">{c.contractNumber}</h1>
               <span
-                className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                  c.contractType === 'GOLD'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : c.contractType === 'SILVER'
-                      ? 'bg-gray-100 text-gray-600'
-                      : 'bg-orange-100 text-orange-700'
+                className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                 }`}
               >
-                {c.contractType}
+                {isActive ? 'Active' : 'Inactive'}
               </span>
               {expired && (
                 <span className="text-xs font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">EXPIRED</span>
+              )}
+              {slaPolicy && (
+                <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                  {slaPolicy.code}
+                </span>
               )}
             </div>
             <p className="text-sm text-gray-400">{c.customer?.companyName}</p>
@@ -145,18 +140,14 @@ export default function ContractDetailPage() {
         <Row label="Contract Number" value={<span className="font-mono">{c.contractNumber}</span>} />
         <Row label="Customer" value={c.customer?.companyName} />
         <Row
-          label="Contract Type"
+          label="Status"
           value={
             <span
-              className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                c.contractType === 'GOLD'
-                  ? 'bg-yellow-100 text-yellow-700'
-                  : c.contractType === 'SILVER'
-                    ? 'bg-gray-100 text-gray-600'
-                    : 'bg-orange-100 text-orange-700'
+              className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
               }`}
             >
-              {c.contractType}
+              {isActive ? 'Active' : 'Inactive'}
             </span>
           }
         />
@@ -170,19 +161,82 @@ export default function ContractDetailPage() {
             </span>
           }
         />
-        <Row label="Weekly Pattern" value={slaCfg.weeklyPattern} />
-        <Row label="Customer Timezone" value={slaCfg.timezone || c.timezone} />
-        <Row label="Holiday Calendar" value={cal?.name} />
-        <Row label="Holiday Support" value={c.holidaySupport ? 'Yes' : 'No'} />
-        <Row label="After-Hours Multiplier" value={c.afterHoursMultiplier ? `${c.afterHoursMultiplier}×` : undefined} />
-        <Row label="Weekend Multiplier" value={c.weekendMultiplier ? `${c.weekendMultiplier}×` : undefined} />
-        {assignedShifts.length > 0 && (
+        <Row label="Customer Timezone" value={c.customer?.timezone} />
+      </Sec>
+
+      {/* Section 2 — Coverage Configuration */}
+      <Sec icon="🕐" title="Coverage Configuration" color="text-blue-700">
+        {supportType ? (
+          <>
+            <Row
+              label="Support Type"
+              value={
+                <span className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                    {supportType.code}
+                  </span>
+                  <span>{supportType.name}</span>
+                </span>
+              }
+            />
+            <Row
+              label="Work Days"
+              value={
+                supportType.workDays?.length ? supportType.workDays.map((d: number) => DAYS[d]).join(', ') : undefined
+              }
+            />
+            <Row label="Weekend Coverage" value={supportType.weekendCoverage} />
+            <Row label="Holiday Coverage" value={supportType.holidayCoverage} />
+            <Row label="After-Hours Coverage" value={supportType.afterHoursCoverage} />
+            {supportType.afterHoursMultiplier != null && (
+              <Row label="After-Hours Multiplier" value={`${supportType.afterHoursMultiplier}×`} />
+            )}
+            {supportType.weekendMultiplier != null && (
+              <Row label="Weekend Multiplier" value={`${supportType.weekendMultiplier}×`} />
+            )}
+            {supportType.holidayMultiplier != null && (
+              <Row label="Holiday Multiplier" value={`${supportType.holidayMultiplier}×`} />
+            )}
+            {supportType.slaPauseConditions?.length > 0 && (
+              <div className="flex items-start py-2.5 border-b border-gray-50">
+                <span className="text-sm text-gray-400 w-52 flex-shrink-0">SLA Pause Conditions</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {supportType.slaPauseConditions.map((p: string) => (
+                    <span
+                      key={p}
+                      className="text-xs font-medium bg-purple-50 text-purple-700 px-2 py-0.5 rounded-lg"
+                    >
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-gray-400 italic">No support type assigned to this contract.</p>
+        )}
+
+        {shifts.length > 0 && (
           <div className="flex items-start py-2.5 border-b border-gray-50">
             <span className="text-sm text-gray-400 w-52 flex-shrink-0">Support Shifts</span>
             <div className="flex flex-wrap gap-1.5">
-              {assignedShifts.map((s) => (
+              {shifts.map((s: any) => (
                 <span key={s.id} className="text-xs font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg">
-                  {s.name} ({s.startTime}–{s.endTime})
+                  {s.name} ({s.startTime}–{s.endTime} {s.timezone})
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {holidayCalendars.length > 0 && (
+          <div className="flex items-start py-2.5">
+            <span className="text-sm text-gray-400 w-52 flex-shrink-0">Holiday Calendars</span>
+            <div className="flex flex-wrap gap-1.5">
+              {holidayCalendars.map((h: any) => (
+                <span key={h.id} className="text-xs font-medium bg-green-50 text-green-700 px-2 py-0.5 rounded-lg">
+                  {h.name} ({h.country} {h.year}) — {(h.dates || []).length} dates
                 </span>
               ))}
             </div>
@@ -190,68 +244,85 @@ export default function ContractDetailPage() {
         )}
       </Sec>
 
-      {/* Section 2 — SLA */}
-      <Sec icon="📊" title="SLA Response & Resolution Times" color="text-blue-700">
-        <div className="border border-gray-200 rounded-xl overflow-hidden mb-5">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-5 py-3 font-semibold text-gray-700 w-1/2">Priority</th>
-                <th className="text-center px-5 py-3 font-semibold text-gray-700">Response</th>
-                <th className="text-center px-5 py-3 font-semibold text-gray-700">Resolution</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {['P1', 'P2', 'P3', 'P4'].map((p) => {
-                const sla = slaP[p];
-                return (
-                  <tr key={p}>
-                    <td className="px-5 py-4">
-                      <p className={`font-semibold ${SLA_COLORS[p]}`}>{SLA_LABELS[p]}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{SLA_DESCS[p]}</p>
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      <span className="inline-block bg-blue-50 text-blue-700 font-semibold text-sm px-3 py-1.5 rounded-lg">
-                        {sla?.response || '—'} min
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      <span className="inline-block bg-purple-50 text-purple-700 font-semibold text-sm px-3 py-1.5 rounded-lg">
-                        {sla?.resolution || '—'} min
-                      </span>
-                    </td>
+      {/* Section 3 — SLA Policy */}
+      <Sec icon="📊" title="SLA Policy" color="text-indigo-700">
+        {slaPolicy ? (
+          <>
+            <Row
+              label="Policy"
+              value={
+                <span className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                    {slaPolicy.code}
+                  </span>
+                  <span>{slaPolicy.name}</span>
+                </span>
+              }
+            />
+            {slaPolicy.warningThreshold != null && (
+              <Row
+                label="Warning Threshold"
+                value={`Alert at ${Math.round(slaPolicy.warningThreshold * 100)}% elapsed`}
+              />
+            )}
+            <div className="mt-4 border border-gray-200 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="text-left px-5 py-3 font-semibold text-gray-700 w-1/2">Priority</th>
+                    <th className="text-center px-5 py-3 font-semibold text-gray-700">Response</th>
+                    <th className="text-center px-5 py-3 font-semibold text-gray-700">Resolution</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {pauseConditions.length > 0 && (
-          <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">SLA Pause Conditions</p>
-            <div className="flex flex-wrap gap-2">
-              {pauseConditions.map((p) => (
-                <span
-                  key={p}
-                  className="text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200 px-3 py-1 rounded-lg"
-                >
-                  {p}
-                </span>
-              ))}
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {['P1', 'P2', 'P3', 'P4'].map((p) => {
+                    const sla = priorities[p];
+                    const enabled = sla && sla.enabled !== false;
+                    return (
+                      <tr key={p} className={!enabled ? 'opacity-40 bg-gray-50' : ''}>
+                        <td className="px-5 py-4">
+                          <p className={`font-semibold ${SLA_COLORS[p]}`}>{SLA_LABELS[p]}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{SLA_DESCS[p]}</p>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          {enabled ? (
+                            <span className="inline-block bg-blue-50 text-blue-700 font-semibold text-sm px-3 py-1.5 rounded-lg">
+                              {sla.response} min
+                            </span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          {enabled ? (
+                            <span className="inline-block bg-purple-50 text-purple-700 font-semibold text-sm px-3 py-1.5 rounded-lg">
+                              {sla.resolution} min
+                            </span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </div>
+          </>
+        ) : (
+          <p className="text-sm text-gray-400 italic">No SLA policy assigned (SLA tracking disabled).</p>
         )}
       </Sec>
 
-      {/* Section 3 — Billing */}
+      {/* Section 4 — Billing */}
       <Sec icon="💰" title="Billing & Renewal" color="text-green-700">
         <Row
           label="Billing Amount"
           value={c.billingAmount ? `${c.currency} ${Number(c.billingAmount).toLocaleString()}` : undefined}
         />
         <Row label="Currency" value={c.currency} />
-        <Row label="Billing Frequency" value={slaCfg.billingFrequency} />
-        <Row label="Payment Terms" value={slaCfg.paymentTerms} />
+        <Row label="Billing Frequency" value={c.billingFrequency} />
+        <Row label="Payment Terms" value={c.paymentTerms} />
         <Row
           label="Auto Renewal"
           value={
@@ -260,8 +331,8 @@ export default function ContractDetailPage() {
             </span>
           }
         />
-        <Row label="Renewal Notice" value={slaCfg.renewalNoticeDays ? `${slaCfg.renewalNoticeDays} days` : undefined} />
-        {slaCfg.notes && <Row label="Notes" value={slaCfg.notes} />}
+        <Row label="Renewal Notice" value={c.renewalNoticeDays ? `${c.renewalNoticeDays} days` : undefined} />
+        {c.notes && <Row label="Notes" value={c.notes} />}
       </Sec>
 
       {/* Change Log */}
