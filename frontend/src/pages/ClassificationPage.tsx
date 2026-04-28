@@ -24,6 +24,7 @@ import {
   ExternalLink,
   Lightbulb,
   Activity,
+  Clock,
 } from 'lucide-react';
 import { analyticsApi } from '../api/services';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
@@ -122,7 +123,7 @@ export default function ClassificationPage() {
         ) : (
           <div className="space-y-6">
             {/* Summary KPIs */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
               <StatCard
                 label="Total Incidents"
                 value={classData?.summary?.total ?? 0}
@@ -138,18 +139,25 @@ export default function ClassificationPage() {
                 color="orange"
               />
               <StatCard
-                label="Resolved"
-                value={classData?.summary?.resolved ?? 0}
-                sub="Closed out"
-                icon={<TrendingUp className="w-6 h-6" />}
-                color="green"
-              />
-              <StatCard
                 label="Critical Modules"
                 value={(classData?.moduleBreakdown || []).filter((m: any) => m.health === 'critical').length}
                 sub="Needing immediate focus"
                 icon={<AlertCircle className="w-6 h-6" />}
                 color="red"
+              />
+              <StatCard
+                label="Avg MTTR"
+                value={classData?.summary?.avgMttrHours != null ? `${classData.summary.avgMttrHours}h` : '—'}
+                sub="all incidents"
+                icon={<Clock className="w-6 h-6" />}
+                color="amber"
+              />
+              <StatCard
+                label="Total Effort"
+                value={classData?.summary?.totalEffortHours != null ? `${classData.summary.totalEffortHours}h` : '0h'}
+                sub="logged this period"
+                icon={<TrendingUp className="w-6 h-6" />}
+                color="green"
               />
             </div>
 
@@ -239,82 +247,144 @@ export default function ClassificationPage() {
                     No incidents with SAP module classification found. Make sure tickets have SAP modules assigned.
                   </p>
                 )}
-                {(classData?.moduleBreakdown || []).map((mod: any) => (
+                {(classData?.moduleBreakdown || []).map((mod: any) => {
+                  const trendDir = mod.trend?.direction;
+                  const showSecondary =
+                    mod.mttrHours != null ||
+                    mod.effortHours > 0 ||
+                    (mod.trend && (mod.trend.previous > 0 || mod.trend.current > 0));
+                  return (
                   <div key={mod.moduleId}>
                     {/* Module row */}
                     <div
-                      className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 cursor-pointer"
+                      className="px-5 py-3.5 hover:bg-gray-50 cursor-pointer"
                       onClick={() => setExpandedModule(expandedModule === mod.moduleId ? null : mod.moduleId)}
                     >
-                      <div className="flex items-center gap-2 w-8">
-                        {mod.subModules?.length > 0 ? (
-                          expandedModule === mod.moduleId ? (
-                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 w-8">
+                          {mod.subModules?.length > 0 ? (
+                            expandedModule === mod.moduleId ? (
+                              <ChevronDown className="w-4 h-4 text-gray-400" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-gray-400" />
+                            )
                           ) : (
-                            <ChevronRight className="w-4 h-4 text-gray-400" />
-                          )
-                        ) : (
-                          <span className="w-4" />
-                        )}
-                      </div>
+                            <span className="w-4" />
+                          )}
+                        </div>
 
-                      {/* Health dot */}
-                      <span
-                        className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                          mod.health === 'critical'
-                            ? 'bg-red-500'
-                            : mod.health === 'warning'
-                              ? 'bg-amber-400'
-                              : 'bg-green-400'
-                        }`}
-                      />
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
-                            {mod.code}
-                          </span>
-                          <span className="text-sm font-medium text-gray-900">{mod.name}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-6 text-sm">
-                        <div className="text-center">
-                          <div className="font-semibold text-gray-900">{mod.total}</div>
-                          <div className="text-xs text-gray-400">Total</div>
-                        </div>
-                        <div className="text-center">
-                          <div className={`font-semibold ${mod.open > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
-                            {mod.open}
-                          </div>
-                          <div className="text-xs text-gray-400">Open</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="font-semibold text-green-600">{mod.resolved}</div>
-                          <div className="text-xs text-gray-400">Resolved</div>
-                        </div>
-                        <div className="text-center">
-                          <div className={`font-semibold ${mod.p1p2Open > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                            {mod.p1p2Open}
-                          </div>
-                          <div className="text-xs text-gray-400">P1/P2</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="font-semibold text-gray-700">{mod.incidents}</div>
-                          <div className="text-xs text-gray-400">Incidents</div>
-                        </div>
+                        {/* Health dot */}
                         <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
                             mod.health === 'critical'
-                              ? 'bg-red-100 text-red-700'
+                              ? 'bg-red-500'
                               : mod.health === 'warning'
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-green-100 text-green-700'
+                                ? 'bg-amber-400'
+                                : 'bg-green-400'
                           }`}
-                        >
-                          {mod.health}
-                        </span>
+                        />
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                              {mod.code}
+                            </span>
+                            <span className="text-sm font-medium text-gray-900">{mod.name}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-6 text-sm">
+                          <div className="text-center">
+                            <div className="font-semibold text-gray-900">{mod.total}</div>
+                            <div className="text-xs text-gray-400">Total</div>
+                          </div>
+                          <div className="text-center">
+                            <div className={`font-semibold ${mod.open > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                              {mod.open}
+                            </div>
+                            <div className="text-xs text-gray-400">Open</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-green-600">{mod.resolved}</div>
+                            <div className="text-xs text-gray-400">Resolved</div>
+                          </div>
+                          <div className="text-center">
+                            <div className={`font-semibold ${mod.p1p2Open > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                              {mod.p1p2Open}
+                            </div>
+                            <div className="text-xs text-gray-400">P1/P2</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-gray-700">{mod.incidents}</div>
+                            <div className="text-xs text-gray-400">Incidents</div>
+                          </div>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              mod.health === 'critical'
+                                ? 'bg-red-100 text-red-700'
+                                : mod.health === 'warning'
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-green-100 text-green-700'
+                            }`}
+                          >
+                            {mod.health}
+                          </span>
+                        </div>
                       </div>
+
+                      {/* Secondary metrics line: MTTR · Effort · Trend */}
+                      {showSecondary && (
+                        <div className="ml-14 mt-1.5 text-xs text-gray-500 flex flex-wrap items-center gap-3">
+                          {mod.mttrHours != null && (
+                            <span>
+                              MTTR <span className="font-semibold text-gray-700">{mod.mttrHours}h</span>
+                              {mod.mttrP50 != null && mod.mttrP90 != null && (
+                                <span className="text-gray-400">
+                                  {' '}
+                                  · p50 {mod.mttrP50}h / p90 {mod.mttrP90}h
+                                </span>
+                              )}
+                            </span>
+                          )}
+                          {mod.effortHours > 0 && (
+                            <>
+                              <span className="text-gray-300">•</span>
+                              <span>
+                                Effort <span className="font-semibold text-gray-700">{mod.effortHours}h</span>
+                                <span className="text-gray-400"> ({mod.effortPercentOfTotal}%)</span>
+                              </span>
+                            </>
+                          )}
+                          {mod.trend && (mod.trend.previous > 0 || mod.trend.current > 0) && (
+                            <>
+                              <span className="text-gray-300">•</span>
+                              <span
+                                className={`font-medium ${
+                                  trendDir === 'up'
+                                    ? 'text-red-600'
+                                    : trendDir === 'down'
+                                      ? 'text-green-600'
+                                      : trendDir === 'new'
+                                        ? 'text-amber-600'
+                                        : 'text-gray-500'
+                                }`}
+                              >
+                                {trendDir === 'up'
+                                  ? '↑'
+                                  : trendDir === 'down'
+                                    ? '↓'
+                                    : trendDir === 'new'
+                                      ? '✦'
+                                      : '→'}
+                                {mod.trend.deltaPercent != null
+                                  ? ` ${Math.abs(mod.trend.deltaPercent)}%`
+                                  : ' new'}
+                              </span>
+                              <span className="text-gray-400">vs prior {days}d</span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Sub-module rows (expanded) */}
@@ -332,7 +402,8 @@ export default function ClassificationPage() {
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </Card>
           </div>

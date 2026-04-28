@@ -54,10 +54,23 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
     const { tenantId } = req.user!;
     const days = parseInt(req.query.days as string) || 30;
     const since = new Date(Date.now() - days * 86400000);
+    const prevSince = new Date(since.getTime() - days * 86400000);
     const baseWhere = { ...scope.where, createdAt: { gte: since } };
 
-    // Module breakdown with counts
-    const [byModule, byType, byPriority, byStatus, topModules] = await Promise.all([
+    // Module breakdown with counts + MTTR / Effort / Trend / Problem aggregates
+    const [
+      byModule,
+      byType,
+      byPriority,
+      byStatus,
+      topModules,
+      mttrByModuleRaw,
+      effortByModuleRaw,
+      problemsByModule,
+      currentByMod,
+      prevByMod,
+      avgMttrRaw,
+    ] = await Promise.all([
       // Per module: total, open, resolved
       prisma.sAPModuleMaster.findMany({
         where: { tenantId, isActive: true },
@@ -102,7 +115,111 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
         orderBy: { _count: { id: 'desc' } },
         take: 5,
       }),
+
+      // MTTR per module (incidents only, resolved subset)
+      prisma.$queryRawUnsafe<Array<{ module_id: string; avg_hours: number; p50: number; p90: number }>>(
+        `SELECT
+           r.sap_module_id AS module_id,
+           ROUND(AVG(EXTRACT(EPOCH FROM (r.resolved_at - r.created_at))/3600)::numeric, 1)::float AS avg_hours,
+           ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (r.resolved_at - r.created_at))/3600)::numeric, 1)::float AS p50,
+           ROUND(PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (r.resolved_at - r.created_at))/3600)::numeric, 1)::float AS p90
+         FROM itsm_records r
+         WHERE r.tenant_id = $1
+           AND r.record_type = 'INCIDENT'
+           AND r.resolved_at IS NOT NULL
+           AND r.created_at >= $2
+           AND r.sap_module_id IS NOT NULL
+         GROUP BY r.sap_module_id`,
+        tenantId,
+        since,
+      ),
+
+      // Effort hours per module (TimeEntry × ITSMRecord)
+      prisma.$queryRawUnsafe<Array<{ module_id: string; hours: number }>>(
+        `SELECT
+           r.sap_module_id AS module_id,
+           SUM(te.hours)::float AS hours
+         FROM time_entries te
+         JOIN itsm_records r ON r.id = te.record_id
+         WHERE r.tenant_id = $1
+           AND te.work_date >= $2
+           AND te.status IN ('APPROVED', 'PENDING')
+           AND r.sap_module_id IS NOT NULL
+         GROUP BY r.sap_module_id`,
+        tenantId,
+        since,
+      ),
+
+      // Problem records per module (for permanent-fix coverage)
+      (prisma.iTSMRecord.groupBy as any)({
+        by: ['sapModuleId'],
+        where: { ...baseWhere, recordType: 'PROBLEM', sapModuleId: { not: null } },
+        _count: { id: true },
+      }),
+
+      // Trend: incidents in current N-day window per module
+      (prisma.iTSMRecord.groupBy as any)({
+        by: ['sapModuleId'],
+        where: { ...baseWhere, recordType: 'INCIDENT', sapModuleId: { not: null } },
+        _count: { id: true },
+      }),
+
+      // Trend: incidents in prior N-day window per module
+      (prisma.iTSMRecord.groupBy as any)({
+        by: ['sapModuleId'],
+        where: {
+          ...scope.where,
+          createdAt: { gte: prevSince, lt: since },
+          recordType: 'INCIDENT',
+          sapModuleId: { not: null },
+        },
+        _count: { id: true },
+      }),
+
+      // Avg MTTR overall (single-row)
+      prisma.$queryRawUnsafe<Array<{ avg_hours: number | null }>>(
+        `SELECT ROUND(AVG(EXTRACT(EPOCH FROM (resolved_at - created_at))/3600)::numeric, 1)::float AS avg_hours
+         FROM itsm_records
+         WHERE tenant_id = $1
+           AND record_type = 'INCIDENT'
+           AND resolved_at IS NOT NULL
+           AND created_at >= $2`,
+        tenantId,
+        since,
+      ),
     ]);
+
+    // Build per-module aggregate maps
+    const mttrByModule = new Map<string, { avg: number; p50: number; p90: number }>();
+    for (const m of mttrByModuleRaw) {
+      mttrByModule.set(m.module_id, {
+        avg: Number(m.avg_hours),
+        p50: Number(m.p50),
+        p90: Number(m.p90),
+      });
+    }
+
+    const effortByModule = new Map<string, number>();
+    let totalEffortHours = 0;
+    for (const e of effortByModuleRaw) {
+      const h = Number(e.hours);
+      effortByModule.set(e.module_id, h);
+      totalEffortHours += h;
+    }
+
+    const problemsByMod = new Map<string, number>();
+    for (const p of problemsByModule as Array<{ sapModuleId: string | null; _count: { id: number } }>) {
+      if (p.sapModuleId) problemsByMod.set(p.sapModuleId, p._count.id);
+    }
+
+    const currentByModMap = new Map<string, number>();
+    for (const c of currentByMod as Array<{ sapModuleId: string | null; _count: { id: number } }>) {
+      if (c.sapModuleId) currentByModMap.set(c.sapModuleId, c._count.id);
+    }
+    const prevByModMap = new Map<string, number>();
+    for (const p of prevByMod as Array<{ sapModuleId: string | null; _count: { id: number } }>) {
+      if (p.sapModuleId) prevByModMap.set(p.sapModuleId, p._count.id);
+    }
 
     // Build module breakdown with health signal
     const moduleBreakdown = byModule
@@ -129,6 +246,33 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
           })
           .filter((sm: any) => sm.count > 0);
 
+        // Per-module aggregates from new queries
+        const mttr = mttrByModule.get(m.id);
+        const effortHours = effortByModule.get(m.id) ?? 0;
+        const effortPercentOfTotal =
+          totalEffortHours > 0 ? Math.round((effortHours / totalEffortHours) * 100) : 0;
+
+        const trendCurrent = currentByModMap.get(m.id) ?? 0;
+        const trendPrevious = prevByModMap.get(m.id) ?? 0;
+        const trendDelta = trendCurrent - trendPrevious;
+        let deltaPercent: number | null;
+        let direction: 'up' | 'down' | 'flat' | 'new';
+        if (trendPrevious === 0) {
+          if (trendCurrent === 0) {
+            direction = 'flat';
+            deltaPercent = 0;
+          } else {
+            direction = 'new';
+            deltaPercent = null;
+          }
+        } else {
+          deltaPercent = Math.round((trendDelta / trendPrevious) * 100);
+          const flatThreshold = Math.max(2, 0.05 * trendPrevious);
+          if (Math.abs(trendDelta) <= flatThreshold) direction = 'flat';
+          else if (trendDelta > 0) direction = 'up';
+          else direction = 'down';
+        }
+
         return {
           moduleId: m.id,
           code: m.code,
@@ -140,6 +284,18 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
           incidents,
           health,
           subModules: subBreakdown,
+          mttrHours: mttr?.avg ?? null,
+          mttrP50: mttr?.p50 ?? null,
+          mttrP90: mttr?.p90 ?? null,
+          effortHours: Math.round(effortHours * 10) / 10,
+          effortPercentOfTotal,
+          trend: {
+            current: trendCurrent,
+            previous: trendPrevious,
+            delta: trendDelta,
+            deltaPercent,
+            direction,
+          },
         };
       })
       .sort((a: any, b: any) => b.total - a.total);
@@ -150,13 +306,28 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
       where: { ...baseWhere, status: { notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'] } },
     });
 
+    // Permanent-fix coverage: % of incident-bearing modules that also have a Problem record
+    const modulesWithIncidents = byModule.filter((m: any) =>
+      m.records.some((r: any) => r.recordType === 'INCIDENT'),
+    );
+    const modulesWithProblem = modulesWithIncidents.filter((m: any) => problemsByMod.has(m.id));
+    const permanentFixCoverage =
+      modulesWithIncidents.length > 0
+        ? Math.round((modulesWithProblem.length / modulesWithIncidents.length) * 100)
+        : null;
+
+    const avgMttrHours = avgMttrRaw[0]?.avg_hours != null ? Number(avgMttrRaw[0].avg_hours) : null;
+
     res.json({
       success: true,
-      period: { days, since },
+      period: { days, since, prevSince },
       summary: {
         total: totalRecords,
         open: totalOpen,
         resolved: totalRecords - totalOpen,
+        totalEffortHours: Math.round(totalEffortHours * 10) / 10,
+        avgMttrHours,
+        permanentFixCoverage,
       },
       moduleBreakdown,
       byType: byType.map((t: any) => ({ type: t.recordType, count: t._count.id })),
