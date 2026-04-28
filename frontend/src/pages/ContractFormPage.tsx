@@ -64,6 +64,7 @@ export default function ContractFormPage() {
     autoRenewal: false,
     renewalNoticeDays: 60,
     notes: '',
+    isActive: true,
     shiftIds: [] as string[],
     holidayCalendarIds: [] as string[],
   });
@@ -92,6 +93,7 @@ export default function ContractFormPage() {
         autoRenewal: c.autoRenewal || false,
         renewalNoticeDays: c.renewalNoticeDays || 60,
         notes: c.notes || '',
+        isActive: c.isActive ?? true,
         shiftIds: c.shifts?.map((s: any) => s.shiftId || s.shift?.id) || [],
         holidayCalendarIds: c.holidayCalendars?.map((h: any) => h.calendarId || h.calendar?.id) || [],
       });
@@ -159,6 +161,7 @@ export default function ContractFormPage() {
         autoRenewal: form.autoRenewal,
         renewalNoticeDays: form.renewalNoticeDays,
         notes: form.notes || undefined,
+        isActive: form.isActive,
         shiftIds: form.shiftIds,
         holidayCalendarIds: form.holidayCalendarIds,
       };
@@ -470,6 +473,21 @@ export default function ContractFormPage() {
                 ))}
               </select>
             </F>
+            <div className="flex items-center gap-3 col-span-2">
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={form.isActive}
+                onChange={(e) => setF('isActive', e.target.checked)}
+                className="accent-green-600 w-4 h-4"
+              />
+              <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
+                Active
+              </label>
+              <span className="text-xs text-gray-400 ml-1">
+                (uncheck to hide from pickers and lists; existing tickets unaffected)
+              </span>
+            </div>
             <div className="flex items-center gap-3 col-span-2">
               <input
                 type="checkbox"

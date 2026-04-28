@@ -119,6 +119,7 @@ router.post('/', enforceRole('SUPER_ADMIN'), async (req: Request, res: Response,
       billingFrequency,
       paymentTerms,
       notes,
+      isActive,
       shiftIds,
       holidayCalendarIds,
     } = req.body;
@@ -141,6 +142,7 @@ router.post('/', enforceRole('SUPER_ADMIN'), async (req: Request, res: Response,
         billingFrequency: billingFrequency || 'Monthly',
         paymentTerms: paymentTerms || 'Net 30',
         notes: notes || undefined,
+        isActive: isActive ?? true,
         shifts: shiftIds?.length ? { create: shiftIds.map((id: string) => ({ shiftId: id })) } : undefined,
         holidayCalendars: holidayCalendarIds?.length
           ? { create: holidayCalendarIds.map((id: string) => ({ holidayCalendarId: id })) }
@@ -183,13 +185,14 @@ router.patch('/:id', enforceRole('SUPER_ADMIN'), async (req: Request, res: Respo
       'billingFrequency',
       'paymentTerms',
       'notes',
+      'isActive',
     ];
     const data: Record<string, unknown> = {};
     for (const k of allowed) {
       if (req.body[k] !== undefined) {
         if (['startDate', 'endDate'].includes(k)) data[k] = new Date(req.body[k]);
         else if (['billingAmount', 'renewalNoticeDays'].includes(k)) data[k] = Number(req.body[k]);
-        else if (k === 'autoRenewal') data[k] = Boolean(req.body[k]);
+        else if (['autoRenewal', 'isActive'].includes(k)) data[k] = Boolean(req.body[k]);
         else data[k] = req.body[k] || null;
       }
     }

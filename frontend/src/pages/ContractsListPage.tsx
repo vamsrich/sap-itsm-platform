@@ -54,6 +54,7 @@ export default function ContractsListPage() {
               {[
                 'Contract #',
                 'Customer',
+                'Active',
                 'Type',
                 'Expires',
                 'Value',
@@ -72,13 +73,13 @@ export default function ContractsListPage() {
           <tbody className="divide-y divide-gray-100">
             {isLoading ? (
               <tr>
-                <td colSpan={10} className="text-center py-12 text-gray-400">
+                <td colSpan={11} className="text-center py-12 text-gray-400">
                   Loading...
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={10} className="text-center py-14 text-gray-400">
+                <td colSpan={11} className="text-center py-14 text-gray-400">
                   No contracts found.
                 </td>
               </tr>
@@ -89,9 +90,20 @@ export default function ContractsListPage() {
                 const shiftNames = shifts.filter((s) => contractShiftIds.includes(s.id)).map((s) => s.name);
                 const p1 = r.slaConfig?.priorities?.P1 || r.slaConfig?.P1;
                 return (
-                  <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={r.id} className={`hover:bg-gray-50 transition-colors ${r.isActive === false ? 'opacity-60' : ''}`}>
                     <td className="px-4 py-3 font-mono text-sm font-semibold text-gray-900">{r.contractNumber}</td>
                     <td className="px-4 py-3 font-medium text-gray-800">{r.customer?.companyName}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                          r.isActive === false
+                            ? 'bg-gray-100 text-gray-500'
+                            : 'bg-green-100 text-green-700'
+                        }`}
+                      >
+                        {r.isActive === false ? 'Inactive' : 'Active'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`text-xs font-bold px-2 py-0.5 rounded-full ${
