@@ -132,6 +132,14 @@ Scenarios that could not be executed due to environment / precondition gaps. The
 | 2026-04-27T04:58:49Z | 2.1 — Ticket creation + initial notifications | manual-guided | Backend not running on `localhost:4000` (connect refused on `/api/v1/health`). Operator chose to abort rather than start backend. |
 | 2026-04-27T06:17:55Z | 2.1 — Ticket creation + initial notifications | manual-guided (Railway) | SUPER_ADMIN credentials gap. Login as `admin@intraedge.com` / `Admin@123` (per CLAUDE.md and business_scenarios.md Reference 1) returned HTTP 401 against Railway. USER, PM, COMPANY_ADMIN logins all succeeded (200). 2.1 itself does not strictly need SUPER_ADMIN (audit verifiable as COMPANY_ADMIN per scenario notes line 236), but operator chose to investigate the credential drift before proceeding. Likely candidates: AMS seed sets a different password than docs claim, OR SUPER_ADMIN was rotated, OR the user doesn't exist on Railway. Blocks scenarios 1.1, 1.7, 1.8 until resolved. |
 
+### Verification findings
+
+Positive confirmations from code-level audits — these are NOT defects, just recorded findings of "this works correctly".
+
+| Date | Subject | Outcome |
+| --- | --- | --- |
+| 2026-04-28 | `frontend/src/pages/ContractFormPage.tsx` | masters-as-truth compliant — Support Type and SLA Policy use FK-only `<select>` dropdowns (filtered to `isActive: true`); Shifts and Holiday Calendars use multi-checkbox FK selection; submit handler posts FK ids only; no inline override fields for any master-controlled value. Phase-2 contract-form refactor anticipated in master-data-seed-v1 design doc §10 is **not needed**. |
+
 ---
 
 ## Future passes
