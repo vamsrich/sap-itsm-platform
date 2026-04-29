@@ -78,26 +78,30 @@ export function SLAReportPage() {
       {metrics && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Total Tickets"
+            label="Total Tickets"
             value={metrics.totalRecords || 0}
+            sub="Tracked against SLA in this period"
             icon={<Shield className="w-5 h-5" />}
             color="blue"
           />
           <StatCard
-            title="Response Met"
+            label="Response Met"
             value={`${metrics.responseMetPct || 0}%`}
+            sub="First response within target"
             icon={<Clock className="w-5 h-5" />}
             color="green"
           />
           <StatCard
-            title="Resolution Met"
+            label="Resolution Met"
             value={`${metrics.resolutionMetPct || 0}%`}
+            sub="Resolved within target"
             icon={<CheckCircle className="w-5 h-5" />}
             color="purple"
           />
           <StatCard
-            title="Breaches"
+            label="Breaches"
             value={metrics.breaches || 0}
+            sub="Response or resolution missed"
             icon={<AlertTriangle className="w-5 h-5" />}
             color="red"
           />
