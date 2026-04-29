@@ -152,6 +152,16 @@ router.post(
   },
 );
 
+// Build a where clause that scopes COMPANY_ADMIN to their own customer's users.
+// SUPER_ADMIN gets the unrestricted tenant-scoped clause.
+function scopeUserWhere(req: Request): { tenantId: string; customerId?: string } {
+  const where: { tenantId: string; customerId?: string } = { tenantId: req.user!.tenantId };
+  if (req.user!.role === 'COMPANY_ADMIN') {
+    where.customerId = req.user!.customerId ?? '__none__';
+  }
+  return where;
+}
+
 // GET /users/:id
 router.get(
   '/:id',
@@ -159,7 +169,7 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = await prisma.user.findFirst({
-        where: { id: req.params.id, tenantId: req.user!.tenantId },
+        where: { id: req.params.id, ...scopeUserWhere(req) },
         select: {
           id: true,
           email: true,
@@ -193,15 +203,23 @@ router.patch(
       const allowed = ['firstName', 'lastName', 'email', 'role', 'status', 'customerId'];
       const data: Record<string, unknown> = {};
       for (const k of allowed) if (req.body[k] !== undefined) data[k] = req.body[k];
+      // COMPANY_ADMIN cannot reassign a user to another customer
+      if (req.user!.role === 'COMPANY_ADMIN' && data.customerId !== undefined) {
+        delete data.customerId;
+      }
       // Normalize email
       if (data.email) data.email = (data.email as string).toLowerCase().trim();
       if (req.body.password) {
         (data as any).passwordHash = await bcrypt.hash(req.body.password, bcryptRounds);
       }
-      await prisma.user.updateMany({
-        where: { id: req.params.id, tenantId: req.user!.tenantId },
+      const result = await prisma.user.updateMany({
+        where: { id: req.params.id, ...scopeUserWhere(req) },
         data: data as any,
       });
+      if (result.count === 0) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
       res.json({ success: true });
     } catch (err) {
       next(err);
@@ -215,10 +233,14 @@ router.delete(
   enforceRole('SUPER_ADMIN', 'COMPANY_ADMIN'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await prisma.user.updateMany({
-        where: { id: req.params.id, tenantId: req.user!.tenantId },
+      const result = await prisma.user.updateMany({
+        where: { id: req.params.id, ...scopeUserWhere(req) },
         data: { status: 'INACTIVE' },
       });
+      if (result.count === 0) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
       res.json({ success: true });
     } catch (err) {
       next(err);

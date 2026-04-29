@@ -203,6 +203,11 @@ router.patch(
   enforceRole('SUPER_ADMIN', 'COMPANY_ADMIN'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // COMPANY_ADMIN can only edit their own customer record
+      if (req.user!.role === 'COMPANY_ADMIN' && req.params.id !== req.user!.customerId) {
+        res.status(403).json({ success: false, error: 'Access denied' });
+        return;
+      }
       const allowed = [
         'companyName',
         'industry',
