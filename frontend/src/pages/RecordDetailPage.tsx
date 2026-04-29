@@ -7,6 +7,7 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { PriorityBadge, StatusBadge, TypeBadge } from '../components/ui/Badges';
 import { Button, Card, Textarea } from '../components/ui/Forms';
 import { Modal } from '../components/ui/Modal';
+import { SimilarIncidents } from '../components/SimilarIncidents';
 import { useAuthStore } from '../store/auth.store';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -220,6 +221,8 @@ export default function RecordDetailPage() {
               </div>
             </Card>
           )}
+
+          {record.recordType === 'INCIDENT' && <SimilarIncidents recordId={record.id} />}
 
           <Card>
             <div className="border-b border-gray-100">
