@@ -35,6 +35,7 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { PriorityBadge, StatusBadge } from '../components/ui/Badges';
 import { PageHeader, Card, StatCard } from '../components/ui/Forms';
 import { Modal } from '../components/ui/Modal';
+import { renderPieLabel } from '../components/charts/renderPieLabel';
 import { formatDistanceToNow } from 'date-fns';
 
 const PIE_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#3b82f6', '#8b5cf6', '#f97316', '#06b6d4'];
@@ -192,7 +193,7 @@ export default function ClassificationPage() {
                         ))}
                       </Pie>
                       <Tooltip />
-                      <Legend />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -209,8 +210,8 @@ export default function ClassificationPage() {
                       margin={{ top: 0, right: 0, bottom: 0, left: -20 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                       <Tooltip />
                       <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                         {['P1', 'P2', 'P3', 'P4'].map((_: any, i: number) => (
@@ -236,7 +237,7 @@ export default function ClassificationPage() {
                         cx="50%"
                         cy="50%"
                         outerRadius={80}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={renderPieLabel}
                         labelLine={false}
                       >
                         {(classData?.byStatus || []).map((_: any, i: number) => (

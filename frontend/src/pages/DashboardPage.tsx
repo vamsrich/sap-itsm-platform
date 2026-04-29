@@ -24,6 +24,7 @@ import { StatCard, Card, PageHeader } from '../components/ui/Forms';
 import { PriorityBadge, StatusBadge, TypeBadge, SLABadge } from '../components/ui/Badges';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useAuthStore } from '../store/auth.store';
+import { renderPieLabel } from '../components/charts/renderPieLabel';
 
 const PIE_COLORS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#10b981', '#ef4444', '#6b7280'];
 
@@ -124,9 +125,9 @@ function AdminDashboard() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={priorityData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {priorityData.map((_: any, i: number) => (
                     <Cell key={i} fill={['#ef4444', '#f97316', '#eab308', '#22c55e'][i] || '#6b7280'} />
@@ -149,14 +150,14 @@ function AdminDashboard() {
                   cx="50%"
                   cy="50%"
                   outerRadius={75}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={renderPieLabel}
                   labelLine={false}
                 >
                   {statusData.map((_: any, i: number) => (
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -172,8 +173,8 @@ function AdminDashboard() {
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend />
+                <Tooltip wrapperStyle={{ fontSize: 11 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -190,7 +191,7 @@ function AdminDashboard() {
                 <XAxis dataKey="day" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={2} dot={false} name="Created" />
                 <Line type="monotone" dataKey="resolved" stroke="#10b981" strokeWidth={2} dot={false} name="Resolved" />
               </LineChart>
@@ -342,7 +343,7 @@ function PMDashboard() {
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="open" fill="#3b82f6" name="Open" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="breaches" fill="#ef4444" name="Breaches" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -360,7 +361,7 @@ function PMDashboard() {
                   cx="50%"
                   cy="50%"
                   outerRadius={75}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={renderPieLabel}
                   labelLine={false}
                 >
                   {moduleData.map((_: any, i: number) => (
@@ -532,8 +533,8 @@ function CustomerDashboard() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={priorityData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {priorityData.map((_: any, i: number) => (
@@ -555,7 +556,7 @@ function CustomerDashboard() {
                   cx="50%"
                   cy="50%"
                   outerRadius={75}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={renderPieLabel}
                   labelLine={false}
                 >
                   {moduleData.map((_: any, i: number) => (
@@ -721,8 +722,8 @@ function AgentDashboard() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={byPriority} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {byPriority.map((_: any, i: number) => (
@@ -744,7 +745,7 @@ function AgentDashboard() {
                   cx="50%"
                   cy="50%"
                   outerRadius={75}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={renderPieLabel}
                   labelLine={false}
                 >
                   {byStatus.map((_: any, i: number) => (
@@ -876,8 +877,8 @@ function UserDashboard() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={byPriority} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {byPriority.map((_: any, i: number) => (
@@ -899,7 +900,7 @@ function UserDashboard() {
                   cx="50%"
                   cy="50%"
                   outerRadius={75}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={renderPieLabel}
                   labelLine={false}
                 >
                   {statusData.map((_: any, i: number) => (
@@ -921,7 +922,7 @@ function UserDashboard() {
                   ))}
                 </Pie>
                 <Tooltip />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>

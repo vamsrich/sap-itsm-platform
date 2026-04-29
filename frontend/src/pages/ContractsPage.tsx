@@ -115,9 +115,9 @@ export function SLAReportPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.byPriority}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="priority" />
-                <YAxis />
-                <Tooltip />
+                <XAxis dataKey="priority" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
