@@ -687,9 +687,9 @@ function AgentDashboard() {
       />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Assigned to Me"
+          label="Open Assignments"
           value={assigned}
-          sub={`${Math.max(0, max - assigned)} capacity left`}
+          sub={`All ticket types · ${Math.max(0, max - assigned)} capacity left`}
           icon={<Ticket className="w-6 h-6" />}
           color="blue"
         />
