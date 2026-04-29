@@ -151,16 +151,19 @@ async function main() {
         resolvedAtRewritten++;
       }
 
-      // ── Backfill respondedAt for resolved/closed records that don't have one ──
+      // ── Backfill respondedAt for any non-NEW, non-CANCELLED record ──
       // Place respondedAt at 40-90% of the response budget (most records show
-      // in-time response), capped at 1 min before effectiveResolvedAt to
-      // maintain temporal ordering.
+      // in-time response). For RESOLVED/CLOSED, cap at 1 min before
+      // effectiveResolvedAt. For OPEN/IN_PROGRESS, cap at 1 min before now.
+      // NEW records keep null respondedAt — they haven't been triaged yet.
       let effectiveRespondedAt = r.respondedAt;
-      if (!effectiveRespondedAt && ['RESOLVED', 'CLOSED'].includes(r.status) && effectiveResolvedAt) {
+      if (!effectiveRespondedAt && r.status !== 'NEW' && r.status !== 'CANCELLED') {
         const respondedFraction = 0.4 + Math.random() * 0.5; // 40-90% of response budget
         const candidate = r.createdAt.getTime() + targets.response * 60 * 1000 * respondedFraction;
-        const maxAllowed = effectiveResolvedAt.getTime() - 60_000;
-        effectiveRespondedAt = new Date(Math.min(candidate, maxAllowed));
+        const ceiling = effectiveResolvedAt
+          ? effectiveResolvedAt.getTime() - 60_000
+          : Date.now() - 60_000;
+        effectiveRespondedAt = new Date(Math.min(candidate, ceiling));
         await prisma.iTSMRecord.update({
           where: { id: r.id },
           data: { respondedAt: effectiveRespondedAt },

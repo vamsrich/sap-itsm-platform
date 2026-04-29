@@ -85,6 +85,7 @@ async function main() {
   await prisma.contractHolidayCalendar.deleteMany({ where: { contract: { customer: { tenantId: tenant.id } } } });
   await prisma.contract.deleteMany({ where: { customer: { tenantId: tenant.id } } });
   await prisma.customerAgent.deleteMany({ where: { customer: { tenantId: tenant.id } } });
+  await prisma.assignmentRule.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.user.updateMany({
     where: { tenantId: tenant.id, customerId: { not: null } },
     data: { customerId: null },
@@ -615,13 +616,15 @@ async function main() {
     subModuleId: string;
     agentId: string;
     createdById: string;
-    createdDaysAgo: number;
+    createdDaysAgo?: number;
+    createdHoursAgo?: number;
     resolvedDaysAgo?: number;
     tags?: string[];
     isParentProblem?: boolean;
     parentProblemId?: string;
   }) {
-    const createdAt = daysAgo(opts.createdDaysAgo);
+    const createdAt =
+      opts.createdHoursAgo !== undefined ? hoursAgo(opts.createdHoursAgo) : daysAgo(opts.createdDaysAgo!);
     const resolvedAt = opts.resolvedDaysAgo ? daysAgo(opts.resolvedDaysAgo) : null;
     const responseDeadline = new Date(
       createdAt.getTime() +
@@ -720,7 +723,7 @@ async function main() {
     subModuleId: ficoGL.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
-    createdDaysAgo: 5,
+    createdHoursAgo: 4,
     tags: ['fx-revaluation', 'exchange-rate'],
   });
   await createTicket({
@@ -764,7 +767,7 @@ async function main() {
     subModuleId: ficoGL.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
-    createdDaysAgo: 3,
+    createdHoursAgo: 3,
     tags: ['intercompany', 'clearing', 'month-end'],
   });
 
@@ -780,7 +783,7 @@ async function main() {
     subModuleId: ficoAP.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
-    createdDaysAgo: 10,
+    createdHoursAgo: 14,
     tags: ['payment-run', 'f110', 'problem-management', 'recurring'],
   });
 
@@ -891,7 +894,7 @@ async function main() {
     subModuleId: ficoAP.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
-    createdDaysAgo: 2,
+    createdHoursAgo: 1.5,
     tags: ['payment-run', 'f110', 'recurring', 'escalated'],
     parentProblemId: apProblem.id,
   });
@@ -953,7 +956,7 @@ async function main() {
     subModuleId: ficoAR.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
-    createdDaysAgo: 4,
+    createdHoursAgo: 5,
     tags: ['bank-statement', 'auto-clearing', 'ar'],
   });
   await createTicket({
@@ -1028,7 +1031,7 @@ async function main() {
     subModuleId: ficoCO.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
-    createdDaysAgo: 2,
+    createdHoursAgo: 2,
     tags: ['product-costing', 'ck11n', 'bom', 'co'],
   });
 
@@ -1139,7 +1142,7 @@ async function main() {
     subModuleId: mmPR.id,
     agentId: mmAgent.id,
     createdById: endUser2.id,
-    createdDaysAgo: 4,
+    createdHoursAgo: 6,
     tags: ['price-variance', 'miro', 'account-determination'],
   });
   await createTicket({
@@ -1169,7 +1172,7 @@ async function main() {
     subModuleId: mmGR.id,
     agentId: mmAgent.id,
     createdById: endUser2.id,
-    createdDaysAgo: 8,
+    createdHoursAgo: 18,
     tags: ['goods-receipt', 'plant-de10', 'problem-management', 'recurring'],
   });
 
@@ -1248,7 +1251,7 @@ async function main() {
     subModuleId: mmGR.id,
     agentId: mmAgent.id,
     createdById: endUser2.id,
-    createdDaysAgo: 3,
+    createdHoursAgo: 3,
     tags: ['goods-receipt', 'split-valuation', 'inventory-value', 'recurring'],
     parentProblemId: mmGRProblem.id,
   });
@@ -1310,7 +1313,7 @@ async function main() {
     subModuleId: mmIM.id,
     agentId: mmAgent.id,
     createdById: endUser2.id,
-    createdDaysAgo: 5,
+    createdHoursAgo: 26,
     tags: ['consignment', 'stock-management', 'vendor'],
   });
   await createTicket({
@@ -1324,7 +1327,7 @@ async function main() {
     subModuleId: mmIM.id,
     agentId: mmAgent.id,
     createdById: endUser2.id,
-    createdDaysAgo: 1,
+    createdHoursAgo: 6.5,
     tags: ['batch-management', 'expiry', 'quality', 'compliance'],
   });
   await createTicket({
@@ -1420,7 +1423,7 @@ async function main() {
     subModuleId: sdOM.id,
     agentId: sdAgent.id,
     createdById: endUser1.id,
-    createdDaysAgo: 6,
+    createdHoursAgo: 22,
     tags: ['transfer-of-requirements', 'tor', 'sd-pp-integration', 'mrp'],
   });
   await createTicket({
@@ -1434,7 +1437,7 @@ async function main() {
     subModuleId: sdOM.id,
     agentId: sdAgent.id,
     createdById: endUser1.id,
-    createdDaysAgo: 3,
+    createdHoursAgo: 4,
     tags: ['output-management', 'email', 'order-confirmation'],
   });
 
@@ -1586,7 +1589,7 @@ async function main() {
     subModuleId: sdPC.id,
     agentId: sdAgent.id,
     createdById: endUser1.id,
-    createdDaysAgo: 5,
+    createdHoursAgo: 7,
     tags: ['pricing', 'intercompany', 'condition', 'recurring'],
   });
   await createTicket({
@@ -1600,7 +1603,7 @@ async function main() {
     subModuleId: sdPC.id,
     agentId: sdAgent.id,
     createdById: endUser1.id,
-    createdDaysAgo: 4,
+    createdHoursAgo: 5,
     tags: ['rebate', 'accruals', 'year-end', 'recurring'],
   });
   await createTicket({
@@ -1635,7 +1638,7 @@ async function main() {
     subModuleId: ppMRP.id,
     agentId: ppAgent.id,
     createdById: endUser2.id,
-    createdDaysAgo: 14,
+    createdHoursAgo: 48,
     tags: ['mrp', 'exception-messages', 'problem-management', 'planning'],
   });
 
@@ -1698,7 +1701,7 @@ async function main() {
     subModuleId: ppMRP.id,
     agentId: ppAgent.id,
     createdById: endUser2.id,
-    createdDaysAgo: 6,
+    createdHoursAgo: 23,
     tags: ['mrp', 'sd-pp-integration', 'tor', 'demand', 'recurring'],
     parentProblemId: ppMRPProblem.id,
   });
@@ -1790,7 +1793,7 @@ async function main() {
     subModuleId: ppPO.id,
     agentId: ppAgent.id,
     createdById: endUser2.id,
-    createdDaysAgo: 7,
+    createdHoursAgo: 32,
     tags: ['production-order', 'goods-receipt', 'storage-location'],
   });
   await createTicket({
@@ -1804,7 +1807,7 @@ async function main() {
     subModuleId: ppPO.id,
     agentId: ppAgent.id,
     createdById: endUser2.id,
-    createdDaysAgo: 2,
+    createdHoursAgo: 2,
     tags: ['production-order', 'settlement', 'cost-element', 'month-end'],
   });
   await createTicket({
