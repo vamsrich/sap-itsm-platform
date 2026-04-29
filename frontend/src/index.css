@@ -41,3 +41,23 @@
 
 /* Nav scrollbar hidden */
 nav::-webkit-scrollbar { display: none; }
+
+/* ── Recharts type density ─────────────────────────────────────
+   Recharts injects inline font-size on its SVG/HTML elements that
+   can't be reached via Tailwind classes or per-component props
+   (the latter often gets overridden by Recharts' defaults). Force
+   the enterprise-density sizes here via class targeting. */
+.recharts-pie-label-text,
+.recharts-text {
+  font-size: 11px;
+}
+.recharts-cartesian-axis-tick-value {
+  font-size: 11px;
+}
+.recharts-legend-item-text {
+  font-size: 11px !important;
+}
+.recharts-tooltip-wrapper,
+.recharts-default-tooltip {
+  font-size: 11px !important;
+}
