@@ -152,30 +152,27 @@ When adding a new endpoint, check it against the visibility matrix in the v34 ha
 - ⚪ 1.4 — Global ticket search + filter presets
 - ⚪ 1.5 — Problem → incident linking UI
 
-### Phase 2 — Intelligence (status corrected from v35 doc)
-> ⚠️ **WARNING: v35 handover doc marks these "DONE" but they were never user-validated.** Real status as of 2026-04-25:
+### Phase 2 — Intelligence (status updated 2026-04-29)
 
-- 🔴 **2.1 — Similar incident finder**
-   - Backend endpoint exists (`GET /analytics/similar/:recordId`) and is sound
-   - **Frontend never wired** — no UI page consumes the endpoint
-   - Action: Build "Similar Incidents" component on `RecordDetailPage.tsx`
+- ✅ **2.1 — Similar incident finder** — shipped 2026-04-29 (commit `57dc5b3`). `<SimilarIncidents>` component on `RecordDetailPage.tsx`, gated to `recordType === 'INCIDENT'`. Uses scoring-based ranking (module + sub-module + tag overlap). Pending v2 refactor onto embeddings (see below).
 
-- 🟡 **2.2 — Recurring pattern detection**
-   - End-to-end wired (`/analytics/patterns` + Patterns tab)
-   - User reports patterns "not accurate"
-   - Action: Debug session — investigate output vs. expectation
+- 🟡 **2.2 — Recurring pattern detection** — DB-backed templates + Jaccard fallback work, 100% classification on seed. Templates approach doesn't scale beyond one customer (manual curation). Pending v2 refactor onto embeddings.
 
-- 🟡 **2.3 — Root-cause accumulation view**
-   - End-to-end wired (`/analytics/root-cause` + Root-Cause tab)
-   - User reports "doesn't work"
-   - Action: Debug session — investigate output vs. expectation
+- ✅ **2.3 — Replaced by Bottlenecks** (commit `eae51d8`). Old root-cause endpoint (`/analytics/root-cause`) deleted; `/analytics/bottlenecks` returns 5 KPIs + sortable agents table. Frontend tab renamed.
 
-- ⚪ **2.4 — SLA compliance reports** — not built
+- 🟡 **2.4 — SLA Reports page** — populates correctly (commits `c723446`, `1204d96`, `55e12b6`). Has KPI cards + breached-tickets table. Resolution-met 82%, response-met 94% post-SLA-service-fix.
 
-- 🟡 **2.5 — Knowledge gap detection**
-   - End-to-end wired (`/analytics/knowledge-gaps` + Gaps tab)
-   - User reports tab is "empty"
-   - Action: Debug session — investigate why gap-score returns nothing
+- 🔴 **2.5 — Knowledge gap detection** — `/analytics/knowledge-gaps` endpoint returns 500 (Prisma `groupBy + having` issue, untriaged). Will be replaced by clusters-without-Problem-record under v2 plan.
+
+### Intelligence stack v2 — embeddings-first refactor (DEFERRED, agreed direction)
+
+> Decision 2026-04-29: refactor Similar Incidents + Recurring Patterns + Knowledge Gaps onto a unified pgvector + sentence-transformers (`Xenova/all-MiniLM-L6-v2`, 384-dim) foundation. Templates demoted to optional curated labels on top of emergent clusters.
+>
+> **Why:** hand-curated templates don't scale. 27 templates work for the AMS seed; a real customer has 100-500 distinct issue patterns; 10 customers ≈ 1,000-5,000 mostly non-overlapping patterns. Manual curation is non-viable. Embeddings scale automatically.
+>
+> **Scope:** ~10 hr core (pgvector schema, embedding service, backfill, ticket lifecycle hook, refactor of Similar/Patterns/Gaps, "promote cluster to template" admin action). +1.5 hr optional LLM cluster summarization.
+>
+> **Status:** pgvector 0.8.2 enabled on Railway (verified). Plan + decisions documented in memory file `project_intelligence_v2_plan.md`. To resume: ask user "single 10-hr push or foundation-first (2a-2d, ~3 hr)?"
 
 ### Phase 3+ (deferred until Phase 2 is actually working)
 - Knowledge base, AI resolution suggestions, auto-Problem creation, CSAT
@@ -186,15 +183,15 @@ When adding a new endpoint, check it against the visibility matrix in the v34 ha
 
 ## Strategic priority (next work)
 
-In this order, **before** any Phase 1.3+ feature work:
+Updated 2026-04-29 — items 2.1 and 2.3 shipped today, 2.4 SLA Report shipped, Bottlenecks replaces root-cause.
 
-1. **Fix 2.1 (Similar Incidents UI)** — well-defined, focused task. Build the frontend component on `RecordDetailPage.tsx`.
+1. **Intelligence stack v2 refactor** — embeddings-first (pgvector + sentence-transformers). ~10 hr core. Replaces Similar Incidents, Recurring Patterns, Knowledge Gaps onto unified vector space. Templates demoted to optional labels. Plan in memory `project_intelligence_v2_plan.md`. Two starting paths: single 10-hr push, OR foundation-first (2a-2d, ~3 hr) then 2e/2f/2g independently.
 
-2. **Investigation session for 2.2 / 2.3 / 2.5** — for each, run the actual endpoint against real seed data, show what's returned, compare to what the user expects to see. Identify whether the issue is: data volume, threshold tuning, algorithm correctness, or frontend rendering.
+2. **Critical Modules drilldown on Classification page** — non-clickable today. Inline filter on the module table below the KPI tile. ~30 min.
 
-3. **Fix the worst of the three based on investigation findings.**
+3. **Shift assignment Phase 4A** — UI to assign agents to shifts, off-hours opt-in checkbox, ~1.5-2 hr. Phase 4B (smart-assign with off-hours fallback) needs a 5-question decision pass first; deferred until 4A ships.
 
-4. **Then start Phase 1.3** (AI classification scaffold).
+4. **Phase 1.3 — AI classification scaffold** — blocked on the "AI inference architecture" decision below. v2 refactor (#1) actually unblocks this since it gets embeddings infrastructure in place.
 
 ---
 
