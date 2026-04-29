@@ -39,6 +39,7 @@ export async function processSLAChecks(): Promise<void> {
           assignedAgentId: true,
           contractId: true,
           createdAt: true,
+          respondedAt: true,
           customer: { select: { companyName: true } },
           assignedAgent: {
             select: { user: { select: { email: true, firstName: true, lastName: true } } },
