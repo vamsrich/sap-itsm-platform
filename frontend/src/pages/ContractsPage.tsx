@@ -2,9 +2,11 @@
 // The primary ContractsPage has been moved to ContractsListPage.tsx + ContractFormPage.tsx + ContractDetailPage.tsx
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { cmdbApi, auditApi, reportsApi } from '../api/services';
 import { DataTable, Column } from '../components/ui/DataTable';
 import { PageHeader, Card, StatCard } from '../components/ui/Forms';
+import { PriorityBadge } from '../components/ui/Badges';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useSLAReport } from '../hooks/useApi';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -122,6 +124,74 @@ export function SLAReportPage() {
           </div>
         </Card>
       )}
+
+      {(() => {
+        const breached = (data?.records || []).filter((r: any) => r.breachResponse || r.breachResolution);
+        if (breached.length === 0) return null;
+        return (
+          <Card title={`Breached Tickets (${breached.length})`}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-5 py-3">Priority</th>
+                    <th className="px-5 py-3">Record</th>
+                    <th className="px-5 py-3">Title</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Breach Type</th>
+                    <th className="px-5 py-3">Age</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {breached.map((s: any) => {
+                    const r = s.record || {};
+                    const types: string[] = [];
+                    if (s.breachResponse) types.push('Response');
+                    if (s.breachResolution) types.push('Resolution');
+                    return (
+                      <tr key={s.id} className="hover:bg-gray-50">
+                        <td className="px-5 py-3">
+                          <PriorityBadge priority={r.priority} short />
+                        </td>
+                        <td className="px-5 py-3 font-mono text-xs text-gray-500">
+                          <Link to={`/records/${s.recordId}`} className="hover:text-blue-600">
+                            {r.recordNumber}
+                          </Link>
+                        </td>
+                        <td className="px-5 py-3 text-gray-900 max-w-md truncate">
+                          <Link to={`/records/${s.recordId}`} className="hover:text-blue-600">
+                            {r.title}
+                          </Link>
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-700">
+                            {r.status?.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex gap-1">
+                            {types.map((t) => (
+                              <span
+                                key={t}
+                                className="text-xs font-medium px-2 py-0.5 rounded bg-red-50 text-red-700"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 text-xs text-gray-500">
+                          {formatDistanceToNow(new Date(s.createdAt), { addSuffix: true })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        );
+      })()}
     </div>
   );
 }
