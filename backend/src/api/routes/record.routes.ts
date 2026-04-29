@@ -84,6 +84,13 @@ router.get('/', validate(listRecordsSchema), async (req: Request, res: Response,
       // SUPER_ADMIN: no extra filters
     }
 
+    // Non-AGENT roles can opt-in to filter by assignedAgentId via query param
+    // (used by the Bottlenecks agents-table row click). AGENT role's own scope
+    // is set above and the query param is intentionally ignored.
+    if (role !== 'AGENT' && q.assignedAgentId) {
+      assignedAgentId = q.assignedAgentId;
+    }
+
     const result = await listRecords({
       tenantId: req.user!.tenantId,
       page: Number(q.page) || 1,

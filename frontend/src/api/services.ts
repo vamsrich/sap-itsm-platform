@@ -190,7 +190,7 @@ export const analyticsApi = {
   classification: (days?: number) => apiClient.get('/analytics/classification', { params: { days } }),
   patterns: (days?: number, threshold?: number) =>
     apiClient.get('/analytics/patterns', { params: { days, threshold } }),
-  rootCause: (days?: number) => apiClient.get('/analytics/root-cause', { params: { days } }),
+  bottlenecks: () => apiClient.get('/analytics/bottlenecks'),
   knowledgeGaps: (days?: number) => apiClient.get('/analytics/knowledge-gaps', { params: { days } }),
   similar: (recordId: string) => apiClient.get(`/analytics/similar/${recordId}`),
 };

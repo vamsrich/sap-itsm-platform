@@ -518,69 +518,267 @@ router.get('/patterns', async (req: Request, res: Response, next: NextFunction) 
   }
 });
 
-// ── GET /analytics/root-cause ──────────────────────────────────────────────────
-// Where tickets stall — avg time in each status by module
-router.get('/root-cause', async (req: Request, res: Response, next: NextFunction) => {
+// ── GET /analytics/bottlenecks ──────────────────────────────────────────────────
+// Action-oriented "where work is stalling" view.
+//
+// At-Risk threshold: ticket is past 50% of its priority's SLA resolution budget
+// (read at runtime from the contract's SLAPolicyMaster.priorities). Tickets with
+// no policy entry or an explicitly-disabled policy are excluded from at-risk math.
+//
+// Breached: SLATracking.breachResponse OR breachResolution = true. We count only
+// currently-open breaches (status NEW/OPEN/IN_PROGRESS/PENDING) — historical
+// breaches on resolved tickets aren't bottlenecks anymore.
+router.get('/bottlenecks', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const scope = await buildAnalyticsScope(req);
     if (!scope) {
-      res.json({ success: true, data: [] });
+      res.json({
+        success: true,
+        agents: [],
+        topAtRiskAgents: [],
+        topBreachedAgents: [],
+        modulesByMTTR: [],
+        closureRate: { windowDays: 7, perModule: [], totals: { opened: 0, resolved: 0, backlogDelta: 0 } },
+        unassignedAging: { totalCount: 0, perModule: [] },
+      });
       return;
     }
 
-    const { tenantId } = req.user!;
-    const days = parseInt(req.query.days as string) || 30;
-    const since = new Date(Date.now() - days * 86400000);
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
+    const OPEN_STATUSES = ['NEW', 'OPEN', 'IN_PROGRESS', 'PENDING'];
 
-    // Stalled tickets: open for more than 2 days, by module and status
-    const stalledByModule = await prisma.$queryRawUnsafe(
-      `
-      SELECT
-        m.code AS module_code,
-        m.name AS module_name,
-        r.status,
-        COUNT(*)::int AS count,
-        ROUND(AVG(EXTRACT(EPOCH FROM (NOW() - r.updated_at))/3600)::numeric, 1) AS avg_hours_in_status,
-        SUM(CASE WHEN r.priority IN ('P1','P2') THEN 1 ELSE 0 END)::int AS critical_count
-      FROM itsm_records r
-      LEFT JOIN sap_module_masters m ON m.id = r.sap_module_id
-      WHERE r.tenant_id = $1
-        AND r.created_at >= $2
-        AND r.status NOT IN ('RESOLVED','CLOSED','CANCELLED')
-        AND r.updated_at <= NOW() - INTERVAL '2 hours'
-      GROUP BY m.code, m.name, r.status
-      ORDER BY avg_hours_in_status DESC
-      LIMIT 30
-    `,
-      tenantId,
-      since,
-    );
+    // Single fetch: all in-scope records with everything we need for the 5 KPIs
+    const records = await prisma.iTSMRecord.findMany({
+      where: scope.where,
+      include: {
+        slaTracking: {
+          select: { breachResponse: true, breachResolution: true, responseDeadline: true, resolutionDeadline: true },
+        },
+        assignedAgent: {
+          select: { id: true, user: { select: { firstName: true, lastName: true } } },
+        },
+        sapModule: { select: { id: true, code: true, name: true } },
+        contract: { select: { slaPolicyMaster: { select: { priorities: true } } } },
+      },
+    });
 
-    // Top bottleneck agents (most tickets in PENDING > 24h)
-    const pendingByAgent = await prisma.$queryRawUnsafe(
-      `
-      SELECT
-        u.first_name || ' ' || u.last_name AS agent_name,
-        COUNT(*)::int AS pending_count,
-        ROUND(AVG(EXTRACT(EPOCH FROM (NOW() - r.updated_at))/3600)::numeric, 1) AS avg_pending_hours
-      FROM itsm_records r
-      JOIN agents a ON a.id = r.assigned_agent_id
-      JOIN users u ON u.id = a.user_id
-      WHERE r.tenant_id = $1
-        AND r.status = 'PENDING'
-        AND r.updated_at <= NOW() - INTERVAL '24 hours'
-      GROUP BY u.first_name, u.last_name
-      ORDER BY pending_count DESC
-      LIMIT 10
-    `,
-      tenantId,
-    );
+    type Rec = (typeof records)[number];
+
+    // Compute per-ticket stale + breach state
+    const ageHours = (r: Rec) => (now.getTime() - r.createdAt.getTime()) / 3600000;
+
+    const isAtRisk = (r: Rec): boolean => {
+      if (!OPEN_STATUSES.includes(r.status)) return false;
+      const priorities = (r.contract?.slaPolicyMaster?.priorities || {}) as Record<
+        string,
+        { resolution?: number; enabled?: boolean }
+      >;
+      const policy = priorities[r.priority];
+      if (!policy || policy.enabled === false || !policy.resolution) return false;
+      const atRiskAfterMs = r.createdAt.getTime() + policy.resolution * 60000 * 0.5;
+      return now.getTime() > atRiskAfterMs;
+    };
+
+    const isBreached = (r: Rec): boolean => {
+      if (!OPEN_STATUSES.includes(r.status)) return false;
+      const sla = r.slaTracking;
+      return !!sla && (sla.breachResponse || sla.breachResolution);
+    };
+
+    // ── Agents Table ────────────────────────────────────────────────────────
+    const agentsMap = new Map<
+      string,
+      {
+        agentId: string;
+        agentName: string;
+        openCount: number;
+        atRiskCount: number;
+        breachedCount: number;
+        oldestAtRiskHours: number;
+        atRiskTickets: Array<{ id: string; recordNumber: string; priority: string; ageHours: number }>;
+        breachedTickets: Array<{ id: string; recordNumber: string; priority: string; ageHours: number }>;
+      }
+    >();
+    for (const r of records) {
+      if (!r.assignedAgent || !OPEN_STATUSES.includes(r.status)) continue;
+      const aid = r.assignedAgent.id;
+      const name = `${r.assignedAgent.user.firstName} ${r.assignedAgent.user.lastName}`;
+      if (!agentsMap.has(aid)) {
+        agentsMap.set(aid, {
+          agentId: aid,
+          agentName: name,
+          openCount: 0,
+          atRiskCount: 0,
+          breachedCount: 0,
+          oldestAtRiskHours: 0,
+          atRiskTickets: [],
+          breachedTickets: [],
+        });
+      }
+      const a = agentsMap.get(aid)!;
+      a.openCount++;
+      const age = ageHours(r);
+      if (isAtRisk(r)) {
+        a.atRiskCount++;
+        a.oldestAtRiskHours = Math.max(a.oldestAtRiskHours, age);
+        a.atRiskTickets.push({ id: r.id, recordNumber: r.recordNumber, priority: r.priority, ageHours: age });
+      }
+      if (isBreached(r)) {
+        a.breachedCount++;
+        a.breachedTickets.push({ id: r.id, recordNumber: r.recordNumber, priority: r.priority, ageHours: age });
+      }
+    }
+    const agents = Array.from(agentsMap.values())
+      .map((a) => ({
+        agentId: a.agentId,
+        agentName: a.agentName,
+        openCount: a.openCount,
+        atRiskCount: a.atRiskCount,
+        breachedCount: a.breachedCount,
+        oldestAtRiskHours: Math.round(a.oldestAtRiskHours * 10) / 10,
+      }))
+      // Default sort: most-problem agents first (atRisk + breached desc, then openCount)
+      .sort((x, y) => y.atRiskCount + y.breachedCount - (x.atRiskCount + x.breachedCount) || y.openCount - x.openCount);
+
+    // ── Top agents by at-risk and by breach (for tile 1 + 2 drilldowns) ─────
+    const topAtRiskAgents = Array.from(agentsMap.values())
+      .filter((a) => a.atRiskCount > 0)
+      .sort((x, y) => y.atRiskCount - x.atRiskCount)
+      .slice(0, 10)
+      .map((a) => {
+        const top = a.atRiskTickets.sort((p, q) => q.ageHours - p.ageHours)[0];
+        return {
+          agentId: a.agentId,
+          agentName: a.agentName,
+          count: a.atRiskCount,
+          topTicket: top ? { id: top.id, recordNumber: top.recordNumber, priority: top.priority } : null,
+        };
+      });
+
+    const topBreachedAgents = Array.from(agentsMap.values())
+      .filter((a) => a.breachedCount > 0)
+      .sort((x, y) => y.breachedCount - x.breachedCount)
+      .slice(0, 10)
+      .map((a) => {
+        const top = a.breachedTickets.sort((p, q) => q.ageHours - p.ageHours)[0];
+        return {
+          agentId: a.agentId,
+          agentName: a.agentName,
+          count: a.breachedCount,
+          topTicket: top ? { id: top.id, recordNumber: top.recordNumber, priority: top.priority } : null,
+        };
+      });
+
+    // ── Modules by MTTR (use only resolved tickets) ─────────────────────────
+    const moduleHours = new Map<
+      string,
+      { moduleId: string; moduleCode: string; moduleName: string; hours: number[] }
+    >();
+    for (const r of records) {
+      if (!r.sapModule || !r.resolvedAt) continue;
+      const hours = (r.resolvedAt.getTime() - r.createdAt.getTime()) / 3600000;
+      if (!moduleHours.has(r.sapModule.id)) {
+        moduleHours.set(r.sapModule.id, {
+          moduleId: r.sapModule.id,
+          moduleCode: r.sapModule.code,
+          moduleName: r.sapModule.name,
+          hours: [],
+        });
+      }
+      moduleHours.get(r.sapModule.id)!.hours.push(hours);
+    }
+    const percentile = (sorted: number[], p: number) => {
+      if (sorted.length === 0) return 0;
+      const idx = Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * p));
+      return sorted[idx];
+    };
+    const modulesByMTTR = Array.from(moduleHours.values())
+      .map((m) => {
+        const sorted = [...m.hours].sort((a, b) => a - b);
+        const avg = sorted.reduce((s, v) => s + v, 0) / sorted.length;
+        return {
+          moduleId: m.moduleId,
+          moduleCode: m.moduleCode,
+          moduleName: m.moduleName,
+          avgMttrHours: Math.round(avg * 10) / 10,
+          p50: Math.round(percentile(sorted, 0.5) * 10) / 10,
+          p90: Math.round(percentile(sorted, 0.9) * 10) / 10,
+          sampleSize: sorted.length,
+        };
+      })
+      .sort((a, b) => b.avgMttrHours - a.avgMttrHours);
+
+    // ── Closure rate (last 7 days) per module + totals ──────────────────────
+    const closureMap = new Map<string, { moduleCode: string; opened: number; resolved: number }>();
+    let totalOpened = 0;
+    let totalResolved = 0;
+    for (const r of records) {
+      const code = r.sapModule?.code || '?';
+      if (!closureMap.has(code)) closureMap.set(code, { moduleCode: code, opened: 0, resolved: 0 });
+      const entry = closureMap.get(code)!;
+      if (r.createdAt >= sevenDaysAgo) {
+        entry.opened++;
+        totalOpened++;
+      }
+      if (r.resolvedAt && r.resolvedAt >= sevenDaysAgo) {
+        entry.resolved++;
+        totalResolved++;
+      }
+    }
+    const closurePerModule = Array.from(closureMap.values())
+      .filter((m) => m.opened > 0 || m.resolved > 0)
+      .map((m) => ({ ...m, backlogDelta: m.opened - m.resolved }))
+      .sort((a, b) => b.backlogDelta - a.backlogDelta);
+
+    // ── Unassigned aging ────────────────────────────────────────────────────
+    const unassignedMap = new Map<
+      string,
+      { moduleCode: string; count: number; oldestHours: number; oldestTicket: any }
+    >();
+    let unassignedTotal = 0;
+    for (const r of records) {
+      if (r.assignedAgentId || !OPEN_STATUSES.includes(r.status)) continue;
+      unassignedTotal++;
+      const code = r.sapModule?.code || '?';
+      const age = ageHours(r);
+      if (!unassignedMap.has(code)) {
+        unassignedMap.set(code, {
+          moduleCode: code,
+          count: 0,
+          oldestHours: 0,
+          oldestTicket: null,
+        });
+      }
+      const entry = unassignedMap.get(code)!;
+      entry.count++;
+      if (age > entry.oldestHours) {
+        entry.oldestHours = age;
+        entry.oldestTicket = {
+          id: r.id,
+          recordNumber: r.recordNumber,
+          priority: r.priority,
+          createdAt: r.createdAt,
+        };
+      }
+    }
+    const unassignedPerModule = Array.from(unassignedMap.values())
+      .map((m) => ({ ...m, oldestHours: Math.round(m.oldestHours * 10) / 10 }))
+      .sort((a, b) => b.oldestHours - a.oldestHours);
 
     res.json({
       success: true,
-      period: { days },
-      stalledByModule,
-      pendingByAgent,
+      agents,
+      topAtRiskAgents,
+      topBreachedAgents,
+      modulesByMTTR,
+      closureRate: {
+        windowDays: 7,
+        perModule: closurePerModule,
+        totals: { opened: totalOpened, resolved: totalResolved, backlogDelta: totalOpened - totalResolved },
+      },
+      unassignedAging: { totalCount: unassignedTotal, perModule: unassignedPerModule },
+      generatedAt: now,
     });
   } catch (err) {
     next(err);

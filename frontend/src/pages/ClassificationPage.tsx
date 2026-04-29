@@ -17,7 +17,6 @@ import {
 import {
   AlertTriangle,
   TrendingUp,
-  Search,
   AlertCircle,
   ChevronDown,
   ChevronRight,
@@ -25,11 +24,17 @@ import {
   Lightbulb,
   Activity,
   Clock,
+  Zap,
+  Users,
+  Inbox,
+  TrendingDown,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { analyticsApi } from '../api/services';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { PriorityBadge, StatusBadge } from '../components/ui/Badges';
 import { PageHeader, Card, StatCard } from '../components/ui/Forms';
+import { Modal } from '../components/ui/Modal';
 import { formatDistanceToNow } from 'date-fns';
 
 const PIE_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#3b82f6', '#8b5cf6', '#f97316', '#06b6d4'];
@@ -40,13 +45,19 @@ const PERIOD_OPTIONS = [
   { label: 'Last 90 days', value: 90 },
 ];
 
-type Tab = 'classification' | 'patterns' | 'rootcause' | 'gaps';
+type Tab = 'classification' | 'patterns' | 'bottlenecks' | 'gaps';
+type Drill = null | 'atRisk' | 'breached' | 'mttr' | 'closure' | 'unassigned';
 
 export default function ClassificationPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('classification');
   const [days, setDays] = useState(30);
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
+  const [drill, setDrill] = useState<Drill>(null);
+  const [agentSort, setAgentSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({
+    key: 'problems',
+    dir: 'desc',
+  });
 
   const { data: classData, isLoading: loadingClass } = useQuery({
     queryKey: ['analytics-classification', days],
@@ -59,10 +70,10 @@ export default function ClassificationPage() {
     enabled: activeTab === 'patterns',
   });
 
-  const { data: rootData, isLoading: loadingRoot } = useQuery({
-    queryKey: ['analytics-rootcause', days],
-    queryFn: () => analyticsApi.rootCause(days).then((r) => r.data),
-    enabled: activeTab === 'rootcause',
+  const { data: bottleneckData, isLoading: loadingBottlenecks } = useQuery({
+    queryKey: ['analytics-bottlenecks'],
+    queryFn: () => analyticsApi.bottlenecks().then((r) => r.data),
+    enabled: activeTab === 'bottlenecks',
   });
 
   const { data: gapData, isLoading: loadingGaps } = useQuery({
@@ -74,7 +85,7 @@ export default function ClassificationPage() {
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'classification', label: 'Incident Classification', icon: <Activity className="w-4 h-4" /> },
     { id: 'patterns', label: 'Recurring Patterns', icon: <TrendingUp className="w-4 h-4" /> },
-    { id: 'rootcause', label: 'Root-Cause View', icon: <Search className="w-4 h-4" /> },
+    { id: 'bottlenecks', label: 'Bottlenecks', icon: <Zap className="w-4 h-4" /> },
     { id: 'gaps', label: 'Knowledge Gaps', icon: <Lightbulb className="w-4 h-4" /> },
   ];
 
@@ -82,7 +93,7 @@ export default function ClassificationPage() {
     <div className="p-6 space-y-6 max-w-screen-2xl mx-auto">
       <PageHeader
         title="Incident Intelligence"
-        subtitle="Classification, patterns, root-cause signals, and knowledge gaps"
+        subtitle="Classification, patterns, bottlenecks, and knowledge gaps"
         actions={
           <select
             value={days}
@@ -534,76 +545,408 @@ export default function ClassificationPage() {
           </div>
         ))}
 
-      {/* ── Tab: Root Cause ─────────────────────────────────────────────────── */}
-      {activeTab === 'rootcause' &&
-        (loadingRoot ? (
-          <LoadingSpinner label="Analysing bottlenecks…" />
+      {/* ── Tab: Bottlenecks ────────────────────────────────────────────────── */}
+      {activeTab === 'bottlenecks' &&
+        (loadingBottlenecks ? (
+          <LoadingSpinner label="Finding bottlenecks…" />
         ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card title="Where Tickets Stall — By Module & Status">
-                <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-                  {(rootData?.stalledByModule || []).length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-8">No stalled tickets found.</p>
-                  )}
-                  {(rootData?.stalledByModule || []).map((row: any, i: number) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-3">
-                      <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded w-14 text-center">
-                        {row.module_code || '—'}
-                      </span>
-                      <StatusBadge status={row.status} />
-                      <div className="flex-1">
-                        <span className="text-sm text-gray-700">{row.module_name || 'Unclassified'}</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-right">
-                        <div>
-                          <div className="text-sm font-semibold text-gray-900">{row.count}</div>
-                          <div className="text-xs text-gray-400">tickets</div>
-                        </div>
-                        <div>
-                          <div
-                            className={`text-sm font-semibold ${Number(row.avg_hours_in_status) > 48 ? 'text-red-600' : Number(row.avg_hours_in_status) > 24 ? 'text-amber-600' : 'text-gray-700'}`}
-                          >
-                            {row.avg_hours_in_status}h
-                          </div>
-                          <div className="text-xs text-gray-400">avg wait</div>
-                        </div>
-                        {row.critical_count > 0 && (
-                          <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-medium">
-                            {row.critical_count} P1/P2
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
+          (() => {
+            const b = bottleneckData || {};
+            const topAtRisk = (b.topAtRiskAgents || [])[0];
+            const topBreached = (b.topBreachedAgents || [])[0];
+            const slowest = (b.modulesByMTTR || [])[0];
+            const closure = b.closureRate?.totals || { opened: 0, resolved: 0, backlogDelta: 0 };
+            const unassigned = b.unassignedAging || { totalCount: 0, perModule: [] };
+            const agents = b.agents || [];
+            const sortedAgents = [...agents].sort((x: any, y: any) => {
+              const dir = agentSort.dir === 'asc' ? 1 : -1;
+              if (agentSort.key === 'problems') {
+                return dir * (x.atRiskCount + x.breachedCount - (y.atRiskCount + y.breachedCount));
+              }
+              if (agentSort.key === 'name') return dir * x.agentName.localeCompare(y.agentName);
+              return dir * ((x[agentSort.key] || 0) - (y[agentSort.key] || 0));
+            });
+            const toggleSort = (key: string) =>
+              setAgentSort((s) =>
+                s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' },
+              );
+            const headerCls = 'px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer select-none hover:text-gray-700';
 
-              <Card title="Agents with Longest Pending Tickets">
-                <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-                  {(rootData?.pendingByAgent || []).length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-8">No pending bottlenecks found.</p>
-                  )}
-                  {(rootData?.pendingByAgent || []).map((row: any, i: number) => (
-                    <div key={i} className="flex items-center gap-4 px-4 py-3">
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-semibold text-indigo-700">
-                        {row.agent_name?.charAt(0) || '?'}
+            return (
+              <div className="space-y-4">
+                {/* ── 5 KPI Tiles ───────────────────────────────────────── */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  {/* Tile 1 — Most At-Risk */}
+                  <button
+                    onClick={() => setDrill('atRisk')}
+                    className="bg-white rounded-xl border border-gray-200 p-5 text-left hover:border-orange-300 hover:shadow-sm transition flex flex-col gap-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
+                        <Clock className="w-4 h-4" />
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">{row.agent_name}</p>
-                        <p className="text-xs text-gray-400">{row.pending_count} pending tickets</p>
-                      </div>
-                      <div
-                        className={`text-sm font-semibold ${Number(row.avg_pending_hours) > 48 ? 'text-red-600' : 'text-amber-600'}`}
-                      >
-                        avg {row.avg_pending_hours}h
-                      </div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Most At-Risk</p>
                     </div>
-                  ))}
+                    {topAtRisk ? (
+                      <>
+                        <p className="text-lg font-bold text-gray-900">{topAtRisk.agentName}</p>
+                        <p className="text-xs text-gray-500">
+                          {topAtRisk.count} ticket{topAtRisk.count !== 1 ? 's' : ''} past 50% of SLA
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-gray-400">Nothing flagged</p>
+                    )}
+                  </button>
+
+                  {/* Tile 2 — Most Breached */}
+                  <button
+                    onClick={() => setDrill('breached')}
+                    className="bg-white rounded-xl border border-gray-200 p-5 text-left hover:border-red-300 hover:shadow-sm transition flex flex-col gap-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
+                        <AlertTriangle className="w-4 h-4" />
+                      </div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Most Breached</p>
+                    </div>
+                    {topBreached ? (
+                      <>
+                        <p className="text-lg font-bold text-gray-900">{topBreached.agentName}</p>
+                        <p className="text-xs text-gray-500">
+                          {topBreached.count} open breach{topBreached.count !== 1 ? 'es' : ''}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-gray-400">Nothing flagged</p>
+                    )}
+                  </button>
+
+                  {/* Tile 3 — Slowest Module */}
+                  <button
+                    onClick={() => setDrill('mttr')}
+                    className="bg-white rounded-xl border border-gray-200 p-5 text-left hover:border-purple-300 hover:shadow-sm transition flex flex-col gap-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                        <TrendingDown className="w-4 h-4" />
+                      </div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Slowest Module</p>
+                    </div>
+                    {slowest ? (
+                      <>
+                        <p className="text-lg font-bold text-gray-900">
+                          {slowest.moduleCode} · {slowest.avgMttrHours}h
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          p50 {slowest.p50}h · p90 {slowest.p90}h
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-gray-400">—</p>
+                    )}
+                  </button>
+
+                  {/* Tile 4 — Backlog Delta */}
+                  <button
+                    onClick={() => setDrill('closure')}
+                    className="bg-white rounded-xl border border-gray-200 p-5 text-left hover:border-blue-300 hover:shadow-sm transition flex flex-col gap-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <Activity className="w-4 h-4" />
+                      </div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Backlog (7d)</p>
+                    </div>
+                    <p
+                      className={`text-lg font-bold ${closure.backlogDelta > 0 ? 'text-red-600' : closure.backlogDelta < 0 ? 'text-green-600' : 'text-gray-900'}`}
+                    >
+                      {closure.backlogDelta > 0 ? '+' : ''}
+                      {closure.backlogDelta}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {closure.opened} opened · {closure.resolved} resolved
+                    </p>
+                  </button>
+
+                  {/* Tile 5 — Unassigned Aging */}
+                  <button
+                    onClick={() => setDrill('unassigned')}
+                    className="bg-white rounded-xl border border-gray-200 p-5 text-left hover:border-amber-300 hover:shadow-sm transition flex flex-col gap-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <Inbox className="w-4 h-4" />
+                      </div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Unassigned</p>
+                    </div>
+                    <p className="text-lg font-bold text-gray-900">
+                      {unassigned.totalCount} ticket{unassigned.totalCount !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {unassigned.perModule[0]
+                        ? `oldest ${(unassigned.perModule[0].oldestHours / 24).toFixed(1)}d`
+                        : 'all assigned'}
+                    </p>
+                  </button>
                 </div>
-              </Card>
-            </div>
-          </div>
+
+                {/* ── Agents Table ──────────────────────────────────────── */}
+                <Card title="Agents — workload & problem load">
+                  {agents.length === 0 ? (
+                    <div className="p-6 text-center text-sm text-gray-400">No agents have open tickets.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 border-b border-gray-100">
+                          <tr>
+                            <th className={headerCls} onClick={() => toggleSort('name')}>
+                              Agent
+                            </th>
+                            <th className={headerCls} onClick={() => toggleSort('openCount')}>
+                              Open
+                            </th>
+                            <th className={headerCls} onClick={() => toggleSort('atRiskCount')}>
+                              At-Risk
+                            </th>
+                            <th className={headerCls} onClick={() => toggleSort('breachedCount')}>
+                              Breached
+                            </th>
+                            <th className={headerCls} onClick={() => toggleSort('oldestAtRiskHours')}>
+                              Oldest At-Risk
+                            </th>
+                            <th className={headerCls} onClick={() => toggleSort('problems')}>
+                              Problem Load
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {sortedAgents.map((a: any) => {
+                            const problems = a.atRiskCount + a.breachedCount;
+                            return (
+                              <tr
+                                key={a.agentId}
+                                onClick={() => navigate(`/records?assignedAgentId=${a.agentId}`)}
+                                className="hover:bg-gray-50 cursor-pointer"
+                              >
+                                <td className="px-5 py-3">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-semibold text-indigo-700">
+                                      {a.agentName?.charAt(0) || '?'}
+                                    </div>
+                                    <span className="font-medium text-gray-900">{a.agentName}</span>
+                                  </div>
+                                </td>
+                                <td className="px-5 py-3 text-gray-700">{a.openCount}</td>
+                                <td className="px-5 py-3">
+                                  <span
+                                    className={`text-xs font-medium px-2 py-0.5 rounded ${a.atRiskCount > 0 ? 'bg-orange-50 text-orange-700' : 'bg-gray-50 text-gray-400'}`}
+                                  >
+                                    {a.atRiskCount}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-3">
+                                  <span
+                                    className={`text-xs font-medium px-2 py-0.5 rounded ${a.breachedCount > 0 ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-400'}`}
+                                  >
+                                    {a.breachedCount}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-3 text-xs text-gray-500">
+                                  {a.oldestAtRiskHours > 0 ? `${a.oldestAtRiskHours}h` : '—'}
+                                </td>
+                                <td className="px-5 py-3">
+                                  <span
+                                    className={`text-xs font-bold ${problems >= 4 ? 'text-red-600' : problems >= 2 ? 'text-amber-600' : 'text-gray-400'}`}
+                                  >
+                                    {problems}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </Card>
+
+                {/* ── Drilldown Modals ──────────────────────────────────── */}
+                <Modal
+                  open={drill === 'atRisk'}
+                  onClose={() => setDrill(null)}
+                  title="Agents with At-Risk Tickets"
+                  size="lg"
+                >
+                  {(b.topAtRiskAgents || []).length === 0 ? (
+                    <p className="text-sm text-gray-400 py-4 text-center">Nothing flagged.</p>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {(b.topAtRiskAgents || []).map((a: any) => (
+                        <div
+                          key={a.agentId}
+                          onClick={() => navigate(`/records?assignedAgentId=${a.agentId}`)}
+                          className="flex items-center gap-3 py-3 cursor-pointer hover:bg-gray-50 px-2 rounded"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-semibold text-orange-700">
+                            {a.agentName.charAt(0)}
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">{a.agentName}</p>
+                            {a.topTicket && (
+                              <p className="text-xs text-gray-500 font-mono">
+                                top: {a.topTicket.recordNumber} ({a.topTicket.priority})
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-sm font-bold text-orange-700">{a.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Modal>
+
+                <Modal
+                  open={drill === 'breached'}
+                  onClose={() => setDrill(null)}
+                  title="Agents with Open Breaches"
+                  size="lg"
+                >
+                  {(b.topBreachedAgents || []).length === 0 ? (
+                    <p className="text-sm text-gray-400 py-4 text-center">Nothing flagged.</p>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {(b.topBreachedAgents || []).map((a: any) => (
+                        <div
+                          key={a.agentId}
+                          onClick={() => navigate(`/records?assignedAgentId=${a.agentId}`)}
+                          className="flex items-center gap-3 py-3 cursor-pointer hover:bg-gray-50 px-2 rounded"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-xs font-semibold text-red-700">
+                            {a.agentName.charAt(0)}
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">{a.agentName}</p>
+                            {a.topTicket && (
+                              <p className="text-xs text-gray-500 font-mono">
+                                top: {a.topTicket.recordNumber} ({a.topTicket.priority})
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-sm font-bold text-red-700">{a.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Modal>
+
+                <Modal open={drill === 'mttr'} onClose={() => setDrill(null)} title="Module MTTR" size="lg">
+                  {(b.modulesByMTTR || []).length === 0 ? (
+                    <p className="text-sm text-gray-400 py-4 text-center">No resolved data.</p>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Module</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Avg</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">p50</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">p90</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Sample</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {(b.modulesByMTTR || []).map((m: any) => (
+                          <tr key={m.moduleId}>
+                            <td className="px-3 py-2 font-medium text-gray-900">
+                              {m.moduleCode} <span className="text-xs text-gray-400">{m.moduleName}</span>
+                            </td>
+                            <td className="px-3 py-2 text-gray-700">{m.avgMttrHours}h</td>
+                            <td className="px-3 py-2 text-gray-700">{m.p50}h</td>
+                            <td className="px-3 py-2 text-gray-700">{m.p90}h</td>
+                            <td className="px-3 py-2 text-xs text-gray-500">{m.sampleSize}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </Modal>
+
+                <Modal
+                  open={drill === 'closure'}
+                  onClose={() => setDrill(null)}
+                  title="Backlog Delta by Module (last 7 days)"
+                  size="lg"
+                >
+                  {(b.closureRate?.perModule || []).length === 0 ? (
+                    <p className="text-sm text-gray-400 py-4 text-center">No activity in window.</p>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Module</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Opened</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">
+                            Resolved
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Delta</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {(b.closureRate?.perModule || []).map((m: any) => (
+                          <tr key={m.moduleCode}>
+                            <td className="px-3 py-2 font-medium text-gray-900">{m.moduleCode}</td>
+                            <td className="px-3 py-2 text-gray-700">{m.opened}</td>
+                            <td className="px-3 py-2 text-gray-700">{m.resolved}</td>
+                            <td
+                              className={`px-3 py-2 font-semibold ${m.backlogDelta > 0 ? 'text-red-600' : m.backlogDelta < 0 ? 'text-green-600' : 'text-gray-700'}`}
+                            >
+                              {m.backlogDelta > 0 ? '+' : ''}
+                              {m.backlogDelta}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </Modal>
+
+                <Modal
+                  open={drill === 'unassigned'}
+                  onClose={() => setDrill(null)}
+                  title="Unassigned Tickets by Module"
+                  size="lg"
+                >
+                  {(b.unassignedAging?.perModule || []).length === 0 ? (
+                    <p className="text-sm text-gray-400 py-4 text-center">All open tickets are assigned.</p>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {(b.unassignedAging?.perModule || []).map((m: any) => (
+                        <div key={m.moduleCode} className="flex items-center gap-3 py-3 px-2">
+                          <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded w-14 text-center">
+                            {m.moduleCode}
+                          </span>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">
+                              {m.count} ticket{m.count !== 1 ? 's' : ''}
+                            </p>
+                            {m.oldestTicket && (
+                              <Link
+                                to={`/records/${m.oldestTicket.id}`}
+                                className="text-xs text-blue-600 font-mono hover:underline"
+                              >
+                                oldest: {m.oldestTicket.recordNumber} ({m.oldestTicket.priority})
+                              </Link>
+                            )}
+                          </div>
+                          <span className="text-sm font-semibold text-amber-700">{m.oldestHours}h</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Modal>
+              </div>
+            );
+          })()
         ))}
 
       {/* ── Tab: Knowledge Gaps ──────────────────────────────────────────────── */}
