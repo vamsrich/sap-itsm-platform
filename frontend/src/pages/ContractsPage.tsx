@@ -73,6 +73,7 @@ export function CMDBPage() {
 export function SLAReportPage() {
   const { data, isLoading } = useSLAReport();
   const metrics = data?.metrics;
+  const [breachedOnly, setBreachedOnly] = useState(true);
   if (isLoading) return <div className="p-8 text-center text-gray-400">Loading SLA report...</div>;
   return (
     <div className="p-6 max-w-screen-xl mx-auto space-y-6">
@@ -126,40 +127,126 @@ export function SLAReportPage() {
       )}
 
       {(() => {
-        const breached = (data?.records || []).filter((r: any) => r.breachResponse || r.breachResolution);
-        if (breached.length === 0) return null;
+        const allRows = (data?.records || []).map((s: any) => {
+          const r = s.record || {};
+          const now = new Date();
+          // Hours over the worst deadline (signed; negative = within budget)
+          const respRef = r.respondedAt ? new Date(r.respondedAt) : now;
+          const resoRef = r.resolvedAt ? new Date(r.resolvedAt) : now;
+          const respOver = (respRef.getTime() - new Date(s.responseDeadline).getTime()) / 3600000;
+          const resoOver = (resoRef.getTime() - new Date(s.resolutionDeadline).getTime()) / 3600000;
+          const hoursOver = Math.max(respOver, resoOver);
+          const types: string[] = [];
+          if (s.breachResponse) types.push('Response');
+          if (s.breachResolution) types.push('Resolution');
+          const breachType = types.length === 2 ? 'Both' : types[0] || null;
+          const agentName = r.assignedAgent
+            ? `${r.assignedAgent.user?.firstName || ''} ${r.assignedAgent.user?.lastName || ''}`.trim()
+            : null;
+          return {
+            slaId: s.id,
+            recordId: s.recordId,
+            recordNumber: r.recordNumber,
+            title: r.title,
+            priority: r.priority,
+            status: r.status,
+            recordType: r.recordType,
+            moduleCode: r.sapModule?.code || null,
+            agentName,
+            createdAt: s.createdAt,
+            breachResponse: s.breachResponse,
+            breachResolution: s.breachResolution,
+            breachType,
+            hoursOver: Math.round(hoursOver * 10) / 10,
+          };
+        });
+        const rows = breachedOnly ? allRows.filter((r: any) => r.breachType) : allRows;
+        const downloadCSV = () => {
+          const headers = [
+            'Record', 'Title', 'Type', 'Priority', 'Status', 'Module', 'Agent',
+            'Breach Type', 'Hours Over', 'Created',
+          ];
+          const escape = (v: any) => {
+            if (v == null) return '';
+            const s = String(v);
+            return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+          };
+          const lines = [
+            headers.join(','),
+            ...rows.map((r: any) => [
+              r.recordNumber, r.title, r.recordType, r.priority, r.status,
+              r.moduleCode || '', r.agentName || '',
+              r.breachType || '', r.breachType ? r.hoursOver : '',
+              r.createdAt,
+            ].map(escape).join(',')),
+          ];
+          // UTF-8 BOM for Excel compatibility
+          const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `sla-report-${new Date().toISOString().slice(0, 10)}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        };
         return (
-          <Card title={`Breached Tickets (${breached.length})`}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-100">
-                  <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    <th className="px-5 py-3">Priority</th>
-                    <th className="px-5 py-3">Record</th>
-                    <th className="px-5 py-3">Title</th>
-                    <th className="px-5 py-3">Status</th>
-                    <th className="px-5 py-3">Breach Type</th>
-                    <th className="px-5 py-3">Age</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {breached.map((s: any) => {
-                    const r = s.record || {};
-                    const types: string[] = [];
-                    if (s.breachResponse) types.push('Response');
-                    if (s.breachResolution) types.push('Resolution');
-                    return (
-                      <tr key={s.id} className="hover:bg-gray-50">
+          <Card
+            title={`${breachedOnly ? 'Breached Tickets' : 'All Tickets'} (${rows.length})`}
+            actions={
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={breachedOnly}
+                    onChange={(e) => setBreachedOnly(e.target.checked)}
+                    className="rounded"
+                  />
+                  Breached only
+                </label>
+                <button
+                  onClick={downloadCSV}
+                  disabled={rows.length === 0}
+                  className="text-xs font-medium px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Download CSV
+                </button>
+              </div>
+            }
+          >
+            {rows.length === 0 ? (
+              <div className="p-6 text-center text-sm text-gray-400">
+                {breachedOnly ? 'No breaches in this period.' : 'No tickets in this period.'}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-5 py-3">Priority</th>
+                      <th className="px-5 py-3">Record</th>
+                      <th className="px-5 py-3">Title</th>
+                      <th className="px-5 py-3">Status</th>
+                      <th className="px-5 py-3">Module</th>
+                      <th className="px-5 py-3">Agent</th>
+                      <th className="px-5 py-3">Breach</th>
+                      <th className="px-5 py-3">Age</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {rows.map((r: any) => (
+                      <tr key={r.slaId} className="hover:bg-gray-50">
                         <td className="px-5 py-3">
                           <PriorityBadge priority={r.priority} short />
                         </td>
                         <td className="px-5 py-3 font-mono text-xs text-gray-500">
-                          <Link to={`/records/${s.recordId}`} className="hover:text-blue-600">
+                          <Link to={`/records/${r.recordId}`} className="hover:text-blue-600">
                             {r.recordNumber}
                           </Link>
                         </td>
                         <td className="px-5 py-3 text-gray-900 max-w-md truncate">
-                          <Link to={`/records/${s.recordId}`} className="hover:text-blue-600">
+                          <Link to={`/records/${r.recordId}`} className="hover:text-blue-600">
                             {r.title}
                           </Link>
                         </td>
@@ -168,27 +255,35 @@ export function SLAReportPage() {
                             {r.status?.replace(/_/g, ' ')}
                           </span>
                         </td>
+                        <td className="px-5 py-3 text-xs font-mono text-gray-600">
+                          {r.moduleCode || '—'}
+                        </td>
+                        <td className="px-5 py-3 text-xs text-gray-600">
+                          {r.agentName || <span className="text-gray-400">unassigned</span>}
+                        </td>
                         <td className="px-5 py-3">
-                          <div className="flex gap-1">
-                            {types.map((t) => (
-                              <span
-                                key={t}
-                                className="text-xs font-medium px-2 py-0.5 rounded bg-red-50 text-red-700"
-                              >
-                                {t}
+                          {r.breachType ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs font-medium px-2 py-0.5 rounded bg-red-50 text-red-700 self-start">
+                                {r.breachType}
                               </span>
-                            ))}
-                          </div>
+                              <span className="text-xs text-red-600 font-mono">
+                                +{r.hoursOver}h
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-green-700">on track</span>
+                          )}
                         </td>
                         <td className="px-5 py-3 text-xs text-gray-500">
-                          {formatDistanceToNow(new Date(s.createdAt), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(r.createdAt), { addSuffix: true })}
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Card>
         );
       })()}

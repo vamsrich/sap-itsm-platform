@@ -162,10 +162,17 @@ router.get('/sla-report', async (req: Request, res: Response, next: NextFunction
       include: {
         record: {
           select: {
+            id: true,
             recordNumber: true,
+            title: true,
             priority: true,
             recordType: true,
             status: true,
+            createdAt: true,
+            respondedAt: true,
+            resolvedAt: true,
+            sapModule: { select: { code: true } },
+            assignedAgent: { select: { user: { select: { firstName: true, lastName: true } } } },
             customer: { select: { companyName: true } },
           },
         },
