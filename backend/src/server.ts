@@ -6,6 +6,7 @@ import { redis } from './config/redis';
 import { startSLAWorker } from './workers/sla.worker';
 import { startEmailWorker } from './workers/email.worker';
 import { startEscalationWorker } from './workers/escalation.worker';
+import { startAIWorker } from './workers/ai.worker';
 import { seedDatabase } from './seed';
 import { bootstrapIssueTemplates } from './services/issue-templates.service';
 import bcrypt from 'bcryptjs';
@@ -159,6 +160,9 @@ async function bootstrap() {
     startSLAWorker();
     startEmailWorker();
     startEscalationWorker();
+    // AI classification worker — Phase A-1 runs in-process with the API.
+    // TODO: in production scale, move this to a dedicated Railway service.
+    startAIWorker();
     logger.info('✅ Workers started');
 
     app.listen(PORT, '0.0.0.0', () => {

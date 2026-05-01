@@ -172,6 +172,11 @@ model Tenant {
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
+  // AI inference config — per architecture v2 §6
+  inferenceProvider String  @default("anthropic") @map("inference_provider")
+  inferenceConfig   Json?   @map("inference_config")
+  sapEdition        String? @map("sap_edition")    // PUBLIC_CLOUD | PRIVATE_CLOUD | ON_PREM
+
   users            User[]
   customers        Customer[]
   configItems      ConfigurationItem[]
@@ -641,6 +646,11 @@ model ITSMRecord {
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
+  // AI classification — per architecture v2 §3, populated by ai-classification worker
+  aiClassification Json?     @map("ai_classification")
+  aiClassifiedAt   DateTime? @map("ai_classified_at")
+  aiVersion        String?   @map("ai_version")
+
   tenant          Tenant             @relation(fields: [tenantId], references: [id])
   customer        Customer?          @relation(fields: [customerId], references: [id])
   contract        Contract?          @relation(fields: [contractId], references: [id])
@@ -918,6 +928,9 @@ model IssueTemplate {
   manuallyEdited Boolean @default(false) @map("manually_edited")
   createdById    String? @map("created_by_id")
   notes          String?
+
+  // Curated checklist for Tier 1 AI checklist generator (architecture v2 §3)
+  curatedChecklist Json? @map("curated_checklist")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")

@@ -38,3 +38,16 @@ export const contractRenewalQueue = new Queue('contract-renewal', {
     backoff: { type: 'exponential', delay: 30000 },
   },
 });
+
+// AI classification queue — Phase A of architecture v2.
+// Each ticket create/update enqueues a job with stable jobId so identical
+// (recordId + ticketVersion) pairs auto-deduplicate at the BullMQ layer.
+export const aiClassificationQueue = new Queue('ai-classification', {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 5000 },
+    removeOnComplete: { count: 500 },
+    removeOnFail: { count: 200 },
+  },
+});

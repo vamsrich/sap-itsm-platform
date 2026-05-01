@@ -8,6 +8,7 @@ import { emailQueue } from '../workers/queues';
 import { slaQueue } from '../workers/queues';
 import { calculateSLADeadline, isSLAApplicable } from './sla.service';
 import { notify } from './notifications/notification.service';
+import { enqueueAIClassification } from './ai/enqueue-classification';
 import { RecordStatus, RecordType, Priority, Prisma } from '@prisma/client';
 
 export interface CreateRecordInput {
@@ -244,6 +245,13 @@ export async function createRecord(input: CreateRecordInput) {
     await slaQueue.add('sla-check', { recordId: record.id }, { delay: 60 * 1000 });
   }
 
+  // Enqueue AI classification (non-blocking; never fails the create path)
+  try {
+    enqueueAIClassification(record.id, (record as any).updatedAt?.getTime() ?? Date.now());
+  } catch (err) {
+    console.error('[AIClassification] enqueue on create failed:', err);
+  }
+
   return record;
 }
 
@@ -442,6 +450,16 @@ export async function updateRecord(
       triggeredBy: userId,
       payload: { agentId: updates.assignedAgentId },
     });
+  }
+
+  // Re-enqueue AI classification if title/description changed (the only
+  // fields that affect classification today). Non-blocking.
+  if (updates.title !== undefined || updates.description !== undefined) {
+    try {
+      enqueueAIClassification(id, (updated as any).updatedAt?.getTime() ?? Date.now());
+    } catch (err) {
+      console.error('[AIClassification] enqueue on update failed:', err);
+    }
   }
 
   return updated;
