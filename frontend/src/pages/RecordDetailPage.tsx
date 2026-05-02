@@ -118,6 +118,15 @@ export default function RecordDetailPage() {
 
   return (
     <div className="p-6 max-w-screen-xl mx-auto space-y-5">
+      {/* Banner: ticket has no active contract — SLA tracking unavailable */}
+      {!record.contractId && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+          <span className="text-base mt-0.5">⚠</span>
+          <p className="text-xs">
+            No active contract — SLA tracking unavailable for this ticket.
+          </p>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-start gap-4">
         <button onClick={() => navigate('/records')} className="text-gray-400 hover:text-gray-600 mt-1">
@@ -546,6 +555,12 @@ export default function RecordDetailPage() {
                   <p className="text-sm text-gray-900 mt-1">{record.customer.companyName}</p>
                 </div>
               )}
+              {record.system && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">System</label>
+                  <p className="text-sm text-gray-900 mt-1">{record.system.name}</p>
+                </div>
+              )}
               {record.ci && (
                 <div>
                   <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
@@ -557,7 +572,7 @@ export default function RecordDetailPage() {
               )}
               {record.module && (
                 <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">SAP Module</label>
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Module</label>
                   <p className="text-sm text-gray-900 mt-1">
                     <span className="font-mono font-bold text-indigo-600">{record.module.code}</span>{' '}
                     {record.module.name}

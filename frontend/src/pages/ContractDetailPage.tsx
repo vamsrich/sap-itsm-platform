@@ -139,6 +139,7 @@ export default function ContractDetailPage() {
       <Sec icon="📋" title="Contract Details" color="text-slate-700">
         <Row label="Contract Number" value={<span className="font-mono">{c.contractNumber}</span>} />
         <Row label="Customer" value={c.customer?.companyName} />
+        <Row label="System" value={c.system?.name} />
         <Row
           label="Status"
           value={

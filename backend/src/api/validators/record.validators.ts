@@ -1,21 +1,26 @@
 import { z } from 'zod';
 
+// A-2b: contractId is server-resolved, not accepted from clients. systemId is
+// required and must be in the customer's CustomerSystem set (server-validates).
 export const createRecordSchema = z.object({
-  body: z.object({
-    recordType: z.enum(['INCIDENT', 'REQUEST', 'PROBLEM', 'CHANGE']),
-    title: z.string().min(5).max(500),
-    description: z.string().min(10).max(10000),
-    priority: z.enum(['P1', 'P2', 'P3', 'P4']).default('P3'),
-    customerId: z.string().uuid().optional(),
-    contractId: z.string().uuid().optional(),
-    assignedAgentId: z.string().uuid().optional(),
-    ciId: z.string().uuid().optional(),
-    parentProblemId: z.string().uuid().optional(),
-    moduleId: z.string().uuid().nullable().optional(),
-    subModuleId: z.string().uuid().nullable().optional(),
-    tags: z.array(z.string()).default([]),
-    metadata: z.record(z.unknown()).optional(),
-  }),
+  body: z
+    .object({
+      recordType: z.enum(['INCIDENT', 'REQUEST', 'PROBLEM', 'CHANGE']),
+      title: z.string().min(5).max(500),
+      description: z.string().min(10).max(10000),
+      priority: z.enum(['P1', 'P2', 'P3', 'P4']).default('P3'),
+      customerId: z.string().uuid().optional(),
+      systemId: z.string().uuid(),                            // mandatory
+      assignedAgentId: z.string().uuid().optional(),
+      ciId: z.string().uuid().optional(),
+      parentProblemId: z.string().uuid().optional(),
+      moduleId: z.string().uuid().nullable().optional(),
+      subModuleId: z.string().uuid().nullable().optional(),
+      tags: z.array(z.string()).default([]),
+      metadata: z.record(z.unknown()).optional(),
+    })
+    // contractId is no longer client-controlled — fail loudly if sent
+    .strict(),
 });
 
 export const updateRecordSchema = z.object({

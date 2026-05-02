@@ -579,6 +579,7 @@ async function main() {
   const contract = await prisma.contract.create({
     data: {
       customerId: customer.id,
+      systemId: sapSystemId,
       contractNumber: 'CON-2026-GLAG-001',
       startDate: new Date('2026-01-01'),
       endDate: new Date('2026-12-31'),

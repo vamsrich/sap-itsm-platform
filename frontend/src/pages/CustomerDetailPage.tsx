@@ -119,6 +119,22 @@ export default function CustomerDetailPage() {
         <Row label="Notes" value={c.notes} />
       </Sec>
 
+      {/* Systems — A-2c */}
+      {Array.isArray(c.systems) && c.systems.length > 0 && (
+        <Sec icon="🖥️" title="Systems" color="text-indigo-700">
+          <div className="flex flex-wrap gap-2 pt-1">
+            {c.systems.map((cs: any) => (
+              <span
+                key={cs.systemId || cs.system?.id}
+                className="text-sm font-medium px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100"
+              >
+                {cs.system?.name || cs.systemId}
+              </span>
+            ))}
+          </div>
+        </Sec>
+      )}
+
       {/* Assigned People */}
       {(c.projectManager || c.customerAgents?.length > 0) && (
         <Sec icon="👥" title="Assigned Team" color="text-indigo-700">

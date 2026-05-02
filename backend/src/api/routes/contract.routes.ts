@@ -70,6 +70,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
       where: { id: req.params.id, customer: { tenantId } },
       include: {
         customer: { select: { id: true, companyName: true, timezone: true } },
+        system: { select: { id: true, code: true, name: true } },
         supportTypeMaster: true,
         slaPolicyMaster: true,
         shifts: { include: { shift: true } },
@@ -107,6 +108,7 @@ router.post('/', enforceRole('SUPER_ADMIN'), async (req: Request, res: Response,
   try {
     const {
       customerId,
+      systemId,
       contractNumber,
       supportTypeMasterId,
       slaPolicyMasterId,
@@ -123,13 +125,31 @@ router.post('/', enforceRole('SUPER_ADMIN'), async (req: Request, res: Response,
       shiftIds,
       holidayCalendarIds,
     } = req.body;
-    if (!customerId || !contractNumber || !startDate || !endDate) {
-      res.status(400).json({ success: false, error: 'customerId, contractNumber, startDate, endDate required' });
+    if (!customerId || !contractNumber || !startDate || !endDate || !systemId) {
+      res.status(400).json({
+        success: false,
+        error: 'customerId, contractNumber, startDate, endDate, and systemId are required',
+      });
       return;
     }
+    // A-2c: subset rule — systemId must be in customer's CustomerSystem
+    const link = await prisma.customerSystem.findUnique({
+      where: { customerId_systemId: { customerId, systemId } },
+      include: { system: { select: { name: true } } },
+    });
+    if (!link) {
+      const sys = await prisma.enterpriseSystem.findUnique({ where: { id: systemId }, select: { name: true } });
+      res.status(400).json({
+        success: false,
+        error: `System ${sys?.name ?? systemId} is not registered for this customer. Add it to the customer first.`,
+      });
+      return;
+    }
+
     const contract = await prisma.contract.create({
       data: {
         customerId,
+        systemId,
         contractNumber,
         supportTypeMasterId: supportTypeMasterId || undefined,
         slaPolicyMasterId: slaPolicyMasterId || undefined,
@@ -186,6 +206,7 @@ router.patch('/:id', enforceRole('SUPER_ADMIN'), async (req: Request, res: Respo
       'paymentTerms',
       'notes',
       'isActive',
+      'systemId',
     ];
     const data: Record<string, unknown> = {};
     for (const k of allowed) {
@@ -193,7 +214,26 @@ router.patch('/:id', enforceRole('SUPER_ADMIN'), async (req: Request, res: Respo
         if (['startDate', 'endDate'].includes(k)) data[k] = new Date(req.body[k]);
         else if (['billingAmount', 'renewalNoticeDays'].includes(k)) data[k] = Number(req.body[k]);
         else if (['autoRenewal', 'isActive'].includes(k)) data[k] = Boolean(req.body[k]);
+        else if (k === 'systemId') data[k] = req.body[k]; // never null — column is NOT NULL
         else data[k] = req.body[k] || null;
+      }
+    }
+
+    // A-2c: if systemId is being changed, enforce the subset rule
+    if (data.systemId && data.systemId !== old.systemId) {
+      const link = await prisma.customerSystem.findUnique({
+        where: { customerId_systemId: { customerId: old.customerId, systemId: data.systemId as string } },
+      });
+      if (!link) {
+        const sys = await prisma.enterpriseSystem.findUnique({
+          where: { id: data.systemId as string },
+          select: { name: true },
+        });
+        res.status(400).json({
+          success: false,
+          error: `System ${sys?.name ?? data.systemId} is not registered for this customer. Add it to the customer first.`,
+        });
+        return;
       }
     }
 

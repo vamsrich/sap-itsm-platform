@@ -218,6 +218,7 @@ model EnterpriseSystem {
   templates        IssueTemplate[]
   classifierConfig ClassifierConfig?
   records          ITSMRecord[]
+  contracts        Contract[]
 
   @@map("enterprise_systems")
 }
@@ -545,25 +546,27 @@ model SubModuleMaster {
 // ── CONTRACTS ────────────────────────────────────────────────
 
 model Contract {
-  id                 String    @id @default(uuid())
-  customerId         String    @map("customer_id")
-  contractNumber     String    @unique @map("contract_number")
-  supportTypeMasterId String?  @map("support_type_master_id")
-  slaPolicyMasterId  String?   @map("sla_policy_master_id")
-  startDate          DateTime  @map("start_date")
-  endDate            DateTime  @map("end_date")
-  autoRenewal        Boolean   @default(false) @map("auto_renewal")
-  renewalNoticeDays  Int       @default(60) @map("renewal_notice_days")
-  billingAmount      Decimal   @map("billing_amount")
-  currency           String    @default("USD")
-  billingFrequency   String    @default("Monthly") @map("billing_frequency")
-  paymentTerms       String    @default("Net 30") @map("payment_terms")
-  notes              String?
-  isActive           Boolean   @default(true) @map("is_active")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  id                  String    @id @default(uuid())
+  customerId          String    @map("customer_id")
+  systemId            String    @map("system_id")            // FK to EnterpriseSystem (A-2c: NOT NULL, one contract = one system)
+  contractNumber      String    @unique @map("contract_number")
+  supportTypeMasterId String?   @map("support_type_master_id")
+  slaPolicyMasterId   String?   @map("sla_policy_master_id")
+  startDate           DateTime  @map("start_date")
+  endDate             DateTime  @map("end_date")
+  autoRenewal         Boolean   @default(false) @map("auto_renewal")
+  renewalNoticeDays   Int       @default(60) @map("renewal_notice_days")
+  billingAmount       Decimal   @map("billing_amount")
+  currency            String    @default("USD")
+  billingFrequency    String    @default("Monthly") @map("billing_frequency")
+  paymentTerms        String    @default("Net 30") @map("payment_terms")
+  notes               String?
+  isActive            Boolean   @default(true) @map("is_active")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   customer          Customer               @relation(fields: [customerId], references: [id])
+  system            EnterpriseSystem       @relation(fields: [systemId], references: [id])
   supportTypeMaster SupportTypeMaster?     @relation(fields: [supportTypeMasterId], references: [id])
   slaPolicyMaster   SLAPolicyMaster?       @relation(fields: [slaPolicyMasterId], references: [id])
   shifts            ContractShift[]
@@ -572,6 +575,8 @@ model Contract {
 
   @@index([customerId])
   @@index([endDate])
+  @@index([systemId])
+  @@index([customerId, systemId, isActive])
   @@map("contracts")
 }
 

@@ -32,9 +32,10 @@ export default function RecordsPage() {
       'Priority',
       'Status',
       'Customer',
+      'System',
       'Assigned Agent',
       'Created By',
-      'SAP Module',
+      'Module',
       'Created',
       'Updated',
     ];
@@ -45,6 +46,7 @@ export default function RecordsPage() {
       r.priority,
       r.status,
       r.customer?.companyName || '',
+      r.system?.name || '',
       r.assignedAgent ? `${r.assignedAgent.user?.firstName} ${r.assignedAgent.user?.lastName}` : '',
       r.createdBy ? `${r.createdBy.firstName} ${r.createdBy.lastName}` : '',
       r.module ? `${r.module.code} - ${r.module.name}` : '',
@@ -101,6 +103,19 @@ export default function RecordsPage() {
           {row.customer && <p className="text-xs text-gray-400">{row.customer.companyName}</p>}
         </div>
       ),
+    },
+    {
+      key: 'system',
+      header: 'System',
+      render: (row) =>
+        row.system ? (
+          <span className="text-xs font-medium px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">
+            {row.system.code.toUpperCase()}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-300">—</span>
+        ),
+      className: 'w-24',
     },
     {
       key: 'priority',

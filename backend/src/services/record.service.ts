@@ -79,6 +79,7 @@ const RECORD_SELECT = {
     select: { id: true, level: true, user: { select: { firstName: true, lastName: true, email: true } } },
   },
   ci: { select: { id: true, name: true, ciType: true } },
+  system: { select: { id: true, code: true, name: true } },
   module: { select: { id: true, code: true, name: true } },
   subModule: { select: { id: true, code: true, name: true } },
   createdBy: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -117,16 +118,62 @@ export async function createRecord(input: CreateRecordInput) {
     }
   }
 
+  // A-2b: resolve systemId BEFORE contract resolution. Explicit input wins
+  // (validator requires it from external callers); fallback derives from
+  // customer's single CustomerSystem when a single internal caller omits it.
+  let resolvedSystemId: string | null = input.systemId ?? null;
+  if (!resolvedSystemId && input.customerId) {
+    const customerSystems = await prisma.customerSystem.findMany({
+      where: { customerId: input.customerId, isActive: true },
+      select: { systemId: true },
+    });
+    if (customerSystems.length === 1) {
+      resolvedSystemId = customerSystems[0].systemId;
+    } else if (customerSystems.length > 1) {
+      throw new AppError(
+        'Customer has multiple enterprise systems — systemId is required in the payload',
+        400,
+        'SYSTEM_ID_REQUIRED',
+      );
+    }
+    // 0 systems → leave null (record can be created without a system; AI classifier falls back)
+  }
+
+  // A-2b: server-resolve contractId from {customerId, systemId} via the most
+  // recent active contract covering that system. External callers can't
+  // provide contractId (validator strips it). No active contract → contractId
+  // stays null and the detail page surfaces a "no active contract" banner.
+  let resolvedContractId: string | null = input.contractId ?? null;
+  if (!resolvedContractId && input.customerId && resolvedSystemId) {
+    const now = new Date();
+    const contract = await prisma.contract.findFirst({
+      where: {
+        customerId: input.customerId,
+        systemId: resolvedSystemId,
+        isActive: true,
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+      orderBy: { startDate: 'desc' },
+      select: { id: true },
+    });
+    if (contract) {
+      resolvedContractId = contract.id;
+    } else {
+      console.log(`[AI] no active contract for customer=${input.customerId} system=${resolvedSystemId}`);
+    }
+  }
+
   let slaTracking: Prisma.SLATrackingCreateWithoutRecordInput | undefined;
 
-  if (input.contractId) {
+  if (resolvedContractId) {
     // Check if SLA applies for this contract + priority
-    const applicable = await isSLAApplicable(input.contractId, input.priority);
+    const applicable = await isSLAApplicable(resolvedContractId, input.priority);
 
     if (applicable) {
       // Load contract with SLA policy
       const contract = await prisma.contract.findUnique({
-        where: { id: input.contractId },
+        where: { id: resolvedContractId },
         include: {
           slaPolicyMaster: true,
           customer: { select: { timezone: true } },
@@ -149,13 +196,13 @@ export async function createRecord(input: CreateRecordInput) {
             calculateSLADeadline({
               startTime: now,
               targetMinutes: targets.response,
-              contractId: input.contractId,
+              contractId: resolvedContractId,
               timezone,
             }),
             calculateSLADeadline({
               startTime: now,
               targetMinutes: targets.resolution,
-              contractId: input.contractId,
+              contractId: resolvedContractId,
               timezone,
             }),
           ]);
@@ -203,26 +250,6 @@ export async function createRecord(input: CreateRecordInput) {
     }
   }
 
-  // Resolve systemId — explicit input wins; otherwise derive from the customer's
-  // single linked system. If customer has multiple systems, systemId is required.
-  let resolvedSystemId: string | null = input.systemId ?? null;
-  if (!resolvedSystemId && input.customerId) {
-    const customerSystems = await prisma.customerSystem.findMany({
-      where: { customerId: input.customerId, isActive: true },
-      select: { systemId: true },
-    });
-    if (customerSystems.length === 1) {
-      resolvedSystemId = customerSystems[0].systemId;
-    } else if (customerSystems.length > 1) {
-      throw new AppError(
-        'Customer has multiple enterprise systems — systemId is required in the payload',
-        400,
-        'SYSTEM_ID_REQUIRED',
-      );
-    }
-    // 0 systems → leave null (record can be created without a system; AI classifier falls back)
-  }
-
   const record = await prisma.iTSMRecord.create({
     data: {
       tenantId: input.tenantId,
@@ -233,7 +260,7 @@ export async function createRecord(input: CreateRecordInput) {
       description: input.description,
       priority: input.priority,
       customerId: input.customerId,
-      contractId: input.contractId,
+      contractId: resolvedContractId,
       assignedAgentId: input.assignedAgentId,
       ciId: input.ciId,
       parentProblemId: input.parentProblemId,

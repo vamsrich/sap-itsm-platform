@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { contractsApi, shiftsApi, holidaysApi, supportTypesApi, slaPoliciesApi } from '../api/services';
+import { contractsApi, shiftsApi, holidaysApi, supportTypesApi, slaPoliciesApi, customersApi } from '../api/services';
 import { useCustomers } from '../hooks/useApi';
 import { getErrorMessage } from '../api/client';
 import { ArrowLeft, FileText } from 'lucide-react';
@@ -53,6 +53,7 @@ export default function ContractFormPage() {
   const [form, setForm] = useState<any>({
     contractNumber: '',
     customerId: '',
+    systemId: '',
     supportTypeMasterId: '',
     slaPolicyMasterId: '',
     startDate: '',
@@ -82,6 +83,7 @@ export default function ContractFormPage() {
       setForm({
         contractNumber: c.contractNumber || '',
         customerId: c.customerId || '',
+        systemId: c.systemId || '',
         supportTypeMasterId: c.supportTypeMasterId || '',
         slaPolicyMasterId: c.slaPolicyMasterId || '',
         startDate: c.startDate ? new Date(c.startDate).toISOString().slice(0, 10) : '',
@@ -124,6 +126,22 @@ export default function ContractFormPage() {
   const supportTypes: any[] = (stData || []).filter((t: any) => t.isActive);
   const slaPolicies: any[] = (slaData || []).filter((p: any) => p.isActive);
 
+  // A-2c: Systems available to the selected customer (subset rule source)
+  const { data: customerSystemsData } = useQuery({
+    queryKey: ['customer-systems', form.customerId],
+    queryFn: () => customersApi.systems(form.customerId).then((r) => r.data.data || []),
+    enabled: !!form.customerId,
+  });
+  const customerSystems: Array<{ id: string; code: string; name: string }> = customerSystemsData || [];
+
+  // On customer change: clear systemId if it's no longer in the customer's set
+  useEffect(() => {
+    if (form.customerId && form.systemId && customerSystems.length > 0) {
+      const stillValid = customerSystems.some((s) => s.id === form.systemId);
+      if (!stillValid) setForm((f: any) => ({ ...f, systemId: '' }));
+    }
+  }, [form.customerId, customerSystems]);
+
   const setF = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   const toggleId = (k: string, id: string) =>
     setF(k, form[k].includes(id) ? form[k].filter((x: string) => x !== id) : [...form[k], id]);
@@ -142,6 +160,10 @@ export default function ContractFormPage() {
       toast.error('Customer required');
       return;
     }
+    if (!form.systemId) {
+      toast.error('System required');
+      return;
+    }
     if (!form.startDate || !form.endDate) {
       toast.error('Start and end dates required');
       return;
@@ -150,6 +172,7 @@ export default function ContractFormPage() {
     try {
       const payload = {
         ...(!isEdit && { contractNumber: form.contractNumber, customerId: form.customerId }),
+        systemId: form.systemId,
         supportTypeMasterId: form.supportTypeMasterId || undefined,
         slaPolicyMasterId: form.slaPolicyMasterId || undefined,
         startDate: new Date(form.startDate).toISOString(),
@@ -228,6 +251,39 @@ export default function ContractFormPage() {
                 </select>
               </F>
             </div>
+
+            {/* A-2c: System scoped to customer's CustomerSystem set */}
+            <div className="grid grid-cols-2 gap-5">
+              <F
+                label="System"
+                required
+                hint="Which enterprise system this contract covers (one contract = one system)"
+              >
+                <select
+                  value={form.systemId}
+                  onChange={(e) => setF('systemId', e.target.value)}
+                  disabled={!form.customerId || customerSystems.length === 0}
+                  className={`${ic} disabled:bg-gray-100 disabled:text-gray-400`}
+                >
+                  {!form.customerId && <option value="">— Select customer first —</option>}
+                  {form.customerId && customerSystems.length === 0 && (
+                    <option value="">— Customer has no systems —</option>
+                  )}
+                  {form.customerId && customerSystems.length > 0 && <option value="">— Select System —</option>}
+                  {customerSystems.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                {form.customerId && customerSystems.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Customer has no systems. Add a system to the customer first.
+                  </p>
+                )}
+              </F>
+            </div>
+
             <div className="grid grid-cols-2 gap-5">
               <F label="Start Date" required>
                 <input

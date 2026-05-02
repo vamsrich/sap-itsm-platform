@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { customersApi, usersApi, agentsApi, holidaysApi } from '../api/services';
+import { customersApi, usersApi, agentsApi, holidaysApi, enterpriseSystemsApi } from '../api/services';
 import { getErrorMessage } from '../api/client';
 import { ArrowLeft, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/auth.store';
 
 const INDUSTRIES = [
   'Technology',
@@ -83,6 +84,7 @@ const blank = {
   projectManagerAgentId: '',
   holidayCalendarId: '',
   agentIds: [] as string[],
+  systemIds: [] as string[],
   notes: '',
   allowedDomains: '',
 };
@@ -94,6 +96,8 @@ export default function CustomerFormPage() {
   const isEdit = !!id;
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ ...blank });
+  const { user } = useAuthStore();
+  const canManageSystems = user?.role === 'SUPER_ADMIN' || user?.role === 'PROJECT_MANAGER';
 
   const { data: existing, isLoading: loadingExisting } = useQuery({
     queryKey: ['customer', id],
@@ -119,11 +123,26 @@ export default function CustomerFormPage() {
         projectManagerAgentId: existing.projectManagerAgentId || '',
         holidayCalendarId: existing.holidayCalendarId || '',
         agentIds: [],
+        systemIds: (existing.systems || []).map((s: any) => s.systemId).filter(Boolean),
         notes: existing.notes || '',
         allowedDomains: (existing.allowedDomains || []).join(', '),
       });
     }
   }, [existing]);
+
+  const { data: systemsList } = useQuery({
+    queryKey: ['enterprise-systems'],
+    queryFn: () => enterpriseSystemsApi.list().then((r) => r.data.data || []),
+  });
+  const systems: Array<{ id: string; code: string; name: string }> = systemsList || [];
+
+  // On create, default-check SAP once systems load
+  useEffect(() => {
+    if (!isEdit && systems.length > 0 && form.systemIds.length === 0) {
+      const sap = systems.find((s) => s.code === 'sap');
+      if (sap) setForm((f) => ({ ...f, systemIds: [sap.id] }));
+    }
+  }, [isEdit, systems, form.systemIds.length]);
 
   const { data: caUsers } = useQuery({
     queryKey: ['users-ca'],
@@ -149,12 +168,16 @@ export default function CustomerFormPage() {
   const hols: any[] = holList || [];
 
   const setF = (k: keyof typeof blank, v: any) => setForm((f) => ({ ...f, [k]: v }));
-  const toggle = (k: 'agentIds', id: string) =>
+  const toggle = (k: 'agentIds' | 'systemIds', id: string) =>
     setF(k, form[k].includes(id) ? form[k].filter((x: string) => x !== id) : [...form[k], id]);
 
   const handleSave = async () => {
     if (!form.companyName.trim()) {
       toast.error('Company name is required');
+      return;
+    }
+    if (form.systemIds.length === 0) {
+      toast.error('At least one system must be selected');
       return;
     }
     setSaving(true);
@@ -283,6 +306,46 @@ export default function CustomerFormPage() {
             <p className="text-xs text-gray-400 mt-1">
               Only users with these email domains can be created under this customer. Leave blank for no restriction.
             </p>
+          </F>
+
+          {/* Systems — A-2c required, min 1. Only SUPER_ADMIN + PM can change. */}
+          <F
+            label="Systems"
+            required
+            hint={
+              canManageSystems
+                ? 'Which enterprise systems this customer uses (SAP, NetSuite, etc.)'
+                : 'Read-only — only SUPER_ADMIN or Project Manager can change systems.'
+            }
+          >
+            {systems.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">Loading…</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {systems.map((s) => {
+                  const checked = form.systemIds.includes(s.id);
+                  return (
+                    <label
+                      key={s.id}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition ${
+                        checked
+                          ? 'border-blue-400 bg-blue-50 text-blue-900'
+                          : 'border-gray-200 bg-white'
+                      } ${canManageSystems ? 'cursor-pointer hover:border-gray-300' : 'opacity-70 cursor-not-allowed'}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggle('systemIds', s.id)}
+                        disabled={!canManageSystems}
+                        className="rounded"
+                      />
+                      <span className="text-sm font-medium">{s.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </F>
         </div>
 

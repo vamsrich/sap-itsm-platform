@@ -1,11 +1,11 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Paperclip, X, Upload } from 'lucide-react';
+import { ArrowLeft, Paperclip, X, Upload, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useCreateRecord, useCustomers } from '../hooks/useApi';
 import { Input, Select, Textarea, Button, PageHeader, Card } from '../components/ui/Forms';
 import { useAuthStore } from '../store/auth.store';
-import { agentsApi, sapModulesApi } from '../api/services';
+import { agentsApi, sapModulesApi, customersApi } from '../api/services';
 
 const TYPE_OPTIONS = [
   { value: 'INCIDENT', label: '🔴 Incident — Something is broken' },
@@ -26,12 +26,16 @@ export default function NewRecordPage() {
   const createRecord = useCreateRecord();
   const { data: customers } = useCustomers();
 
+  // Auto-default customer for COMPANY_ADMIN/USER from JWT
+  const customerLocked = user?.role === 'COMPANY_ADMIN' || user?.role === 'USER';
+
   const [form, setForm] = useState({
     recordType: 'INCIDENT',
     title: '',
     description: '',
     priority: 'P3',
-    customerId: '',
+    customerId: customerLocked ? user?.customerId || '' : '',
+    systemId: '',
     assignedAgentId: '',
     tags: '',
     moduleId: '',
@@ -42,7 +46,6 @@ export default function NewRecordPage() {
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isUserRole = user?.role === 'USER';
   const canAssign = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'AGENT', 'PROJECT_MANAGER'].includes(user?.role || '');
 
   const { data: agentsData } = useQuery({
@@ -58,9 +61,31 @@ export default function NewRecordPage() {
     enabled: canAssign,
   });
 
+  // Customer's available systems (with hasActiveContract flag per system)
+  const { data: systemsData } = useQuery({
+    queryKey: ['customer-systems', form.customerId],
+    queryFn: () => customersApi.systems(form.customerId).then((r) => r.data.data || []),
+    enabled: !!form.customerId,
+  });
+  const systems: Array<{ id: string; code: string; name: string; hasActiveContract: boolean }> = systemsData || [];
+
+  // Auto-select when exactly one system, clear when customer changes
+  useEffect(() => {
+    if (systems.length === 1 && form.systemId !== systems[0].id) {
+      setForm((f) => ({ ...f, systemId: systems[0].id, moduleId: '', subModuleId: '' }));
+    }
+    if (systems.length > 1 && !systems.find((s) => s.id === form.systemId)) {
+      setForm((f) => ({ ...f, systemId: '', moduleId: '', subModuleId: '' }));
+    }
+  }, [systems, form.systemId]);
+
+  const selectedSystem = systems.find((s) => s.id === form.systemId);
+
+  // Modules filtered by selected system
   const { data: sapModulesData } = useQuery({
-    queryKey: ['sap-modules-active'],
-    queryFn: () => sapModulesApi.active().then((r) => r.data.data || []),
+    queryKey: ['sap-modules-active', form.systemId],
+    queryFn: () => sapModulesApi.active(form.systemId).then((r) => r.data.data || []),
+    enabled: !!form.systemId,
   });
   const sapModules: any[] = sapModulesData || [];
   const selectedModule = sapModules.find((m: any) => m.id === form.moduleId);
@@ -72,7 +97,16 @@ export default function NewRecordPage() {
     setForm((f) => {
       const next = { ...f, [key]: val };
       if (key === 'moduleId') next.subModuleId = '';
-      if (key === 'customerId') next.assignedAgentId = '';
+      if (key === 'customerId') {
+        next.systemId = '';
+        next.moduleId = '';
+        next.subModuleId = '';
+        next.assignedAgentId = '';
+      }
+      if (key === 'systemId') {
+        next.moduleId = '';
+        next.subModuleId = '';
+      }
       return next;
     });
     setErrors((e) => {
@@ -87,6 +121,9 @@ export default function NewRecordPage() {
     if (!form.title.trim() || form.title.length < 5) errs.title = 'Title must be at least 5 characters';
     if (!form.description.trim() || form.description.length < 10)
       errs.description = 'Description must be at least 10 characters';
+    if (!form.customerId) errs.customerId = 'Customer is required';
+    if (!form.systemId) errs.systemId = 'System is required';
+    if (!form.moduleId) errs.moduleId = 'Module is required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -110,7 +147,8 @@ export default function NewRecordPage() {
       title: form.title.trim(),
       description: form.description.trim(),
       priority: form.priority,
-      customerId: form.customerId || undefined,
+      customerId: form.customerId,
+      systemId: form.systemId,
       assignedAgentId: form.assignedAgentId || undefined,
       moduleId: form.moduleId || undefined,
       subModuleId: form.subModuleId || undefined,
@@ -139,6 +177,61 @@ export default function NewRecordPage() {
       <form onSubmit={handleSubmit} className="space-y-5">
         <Card>
           <div className="p-5 space-y-5">
+            {/* Customer + System — top of form per A-2b */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Customer *</label>
+                <select
+                  value={form.customerId}
+                  onChange={(e) => set('customerId', e.target.value)}
+                  disabled={customerLocked}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-700"
+                >
+                  <option value="">— Select Customer —</option>
+                  {customerList.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.companyName}
+                    </option>
+                  ))}
+                </select>
+                {errors.customerId && <p className="text-xs text-red-600 mt-1">{errors.customerId}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">System *</label>
+                <select
+                  value={form.systemId}
+                  onChange={(e) => set('systemId', e.target.value)}
+                  disabled={!form.customerId || systems.length <= 1}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-700"
+                >
+                  {!form.customerId && <option value="">— Select customer first —</option>}
+                  {form.customerId && systems.length === 0 && <option value="">— No systems —</option>}
+                  {form.customerId && systems.length > 1 && <option value="">— Select System —</option>}
+                  {systems.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.systemId && <p className="text-xs text-red-600 mt-1">{errors.systemId}</p>}
+                {form.customerId && systems.length === 0 && (
+                  <p className="text-xs text-red-600 mt-1">
+                    No active contracts cover systems for this customer.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {selectedSystem && !selectedSystem.hasActiveContract && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <p className="text-xs">
+                  No active contract covering {selectedSystem.name} for this customer. The ticket will still be created
+                  but SLA tracking will be unavailable until a contract is in place.
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <Select
                 label="Record Type"
@@ -154,22 +247,24 @@ export default function NewRecordPage() {
               />
             </div>
 
-            {/* Module / Sub-Module */}
+            {/* Module / Sub-Module — filtered by selected system */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Module</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Module *</label>
                 <select
                   value={form.moduleId}
                   onChange={(e) => set('moduleId', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  disabled={!form.systemId}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
                 >
-                  <option value="">— Select Module —</option>
+                  <option value="">{form.systemId ? '— Select Module —' : '— Select a system first —'}</option>
                   {sapModules.map((m: any) => (
                     <option key={m.id} value={m.id}>
                       {m.code} — {m.name}
                     </option>
                   ))}
                 </select>
+                {errors.moduleId && <p className="text-xs text-red-600 mt-1">{errors.moduleId}</p>}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Sub-Module</label>
@@ -214,27 +309,6 @@ export default function NewRecordPage() {
               error={errors.description}
               rows={6}
             />
-
-            {/* Customer + Contract */}
-            {!isUserRole && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Customer</label>
-                  <select
-                    value={form.customerId}
-                    onChange={(e) => set('customerId', e.target.value)}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  >
-                    <option value="">— No Customer —</option>
-                    {customerList.map((c: any) => (
-                      <option key={c.id} value={c.id}>
-                        {c.companyName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
 
             {/* Agent Assignment */}
             {canAssign && (

@@ -36,11 +36,19 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// GET /sap-modules/active — only active modules with active submodules (for ticket forms)
+// GET /sap-modules/active?systemId=X — active modules + active submodules.
+// systemId is optional; when omitted, returns all systems' modules (legacy
+// behaviour). The ticket-create form should always pass systemId so the
+// dropdown only shows modules from the currently-selected system.
 router.get('/active', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const systemId = (req.query.systemId as string | undefined) || undefined;
     const modules = await prisma.moduleMaster.findMany({
-      where: { tenantId: req.user!.tenantId, isActive: true },
+      where: {
+        tenantId: req.user!.tenantId,
+        isActive: true,
+        ...(systemId && { systemId }),
+      },
       include: { subModules: { where: { isActive: true }, orderBy: { sortOrder: 'asc' } } },
       orderBy: { sortOrder: 'asc' },
     });

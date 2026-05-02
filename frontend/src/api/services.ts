@@ -64,6 +64,15 @@ export const customersApi = {
   get: (id: string) => apiClient.get(`/customers/${id}`),
   create: (data: object) => apiClient.post('/customers', data),
   update: (id: string, data: object) => apiClient.patch(`/customers/${id}`, data),
+  // EnterpriseSystems the customer is signed up for (with hasActiveContract flag).
+  // Used by the ticket-create form's System dropdown.
+  systems: (id: string) => apiClient.get(`/customers/${id}/systems`),
+};
+
+// EnterpriseSystem registry (read-only) — used by Customer Form's
+// Systems multi-select source.
+export const enterpriseSystemsApi = {
+  list: () => apiClient.get('/enterprise-systems'),
 };
 
 // ── Contracts API ─────────────────────────────────────────────────────────────
@@ -157,7 +166,8 @@ export const notificationRulesApi = {
 
 export const sapModulesApi = {
   list: () => apiClient.get('/sap-modules'),
-  active: () => apiClient.get('/sap-modules/active'),
+  active: (systemId?: string) =>
+    apiClient.get('/sap-modules/active', { params: systemId ? { systemId } : undefined }),
   create: (data: object) => apiClient.post('/sap-modules', data),
   update: (id: string, data: object) => apiClient.patch(`/sap-modules/${id}`, data),
   delete: (id: string) => apiClient.delete(`/sap-modules/${id}`),

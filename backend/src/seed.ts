@@ -89,6 +89,10 @@ export async function seedDatabase() {
     },
   });
 
+  // Resolve SAP system for default linking — every customer + contract
+  // in the legacy seed defaults to SAP per A-2c.
+  const sapSystem = await prisma.enterpriseSystem.findUniqueOrThrow({ where: { code: 'sap' } });
+
   const customer = await prisma.customer.create({
     data: {
       tenantId: tenant.id,
@@ -97,12 +101,14 @@ export async function seedDatabase() {
       country: 'US',
       timezone: 'America/New_York',
       status: 'ACTIVE',
+      systems: { create: [{ systemId: sapSystem.id }] },
     },
   });
 
   const contract = await prisma.contract.create({
     data: {
       customerId: customer.id,
+      systemId: sapSystem.id,
       contractNumber: 'CTR-2024-001',
       startDate: new Date('2024-01-01'),
       endDate: new Date('2024-12-31'),
