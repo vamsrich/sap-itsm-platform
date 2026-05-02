@@ -148,7 +148,7 @@ When adding a new endpoint, check it against the visibility matrix in the v34 ha
 ### Phase 1 — Foundation
 - ✅ 1.1 — Dashboard scoping fix (v34) — works (admin trend chart is a stub)
 - 🟡 1.2 — Incident classification view (v35) — shows data, output not yet user-validated
-- ⚪ 1.3 — AI classification scaffold (`aiClassification Json?` field + BullMQ worker)
+- 🟡 1.3 — AI classification scaffold — **Phase A-1 shipped 2026-05-02** (commits `d8e9224`, `c2c356b`). Schema (`aiClassification`/`aiClassifiedAt`/`aiVersion` on ITSMRecord, `inferenceProvider`/`inferenceConfig`/`sapEdition` on Tenant, `curatedChecklist` on IssueTemplate), `LLMClient` interface + `AnthropicClient` (stub), BullMQ `ai-classification` queue + worker, debounced enqueue from createRecord/updateRecord. Verified end-to-end with stub on INC-2026-000004. Default model `claude-haiku-4-5-20251001`. **A-2 = swap stub for real Anthropic call.** See memory `project_ai_phase_a1_shipped.md`.
 - ⚪ 1.4 — Global ticket search + filter presets
 - ⚪ 1.5 — Problem → incident linking UI
 
@@ -281,6 +281,8 @@ This section will be revisited after Phase 2 intelligence features are working a
 6. AGENT seeing all tenant tickets → `assignedAgentId` filter on all list endpoints
 7. AMS seed `Comment.authorId` bug → use User.id, not Agent.id
 8. AMS seed delete order → delete `ContractShift` before `Contract`
+9. SLA worker not skipping responded tickets → missing `respondedAt` in `record.select` of `sla.service.ts:30-48`. Fix: include the field so the gate condition `!sla.record.respondedAt` works
+10. **BullMQ silently rejects custom jobIds containing `:`** → `:` is reserved for Redis key namespacing. Use `-` as separator. Bit the AI worker on Phase A-1 (every enqueue failed silently). Pattern: `\`\${recordId}-\${ticketVersion}\`` ✓, never `\`\${recordId}:\${ticketVersion}\`` ✗
 
 ---
 

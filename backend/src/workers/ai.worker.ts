@@ -67,9 +67,11 @@ async function processJob(data: AIClassificationJobData): Promise<void> {
     description: record.description,
     recordType: record.recordType,
     priority: record.priority,
-    sapModuleId: record.sapModuleId,
+    systemId: record.systemId,
+    moduleId: record.moduleId,
     sapEdition: record.tenant?.sapEdition ?? null,
   };
+  logger.info(`[AI] processJob systemId=${record.systemId ?? 'null'} moduleId=${record.moduleId ?? 'null'}`);
 
   const result = await withTimeout(client.classify(input), HARD_TIMEOUT_MS, 'classify');
   logger.info(`[AI] processJob classify returned classifierVersion=${result.classifierVersion}`);

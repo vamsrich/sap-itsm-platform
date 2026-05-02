@@ -6,6 +6,18 @@ const prisma = new PrismaClient();
 const router = Router();
 router.use(verifyJWT, enforceTenantScope);
 
+// Resolve the SAP EnterpriseSystem id (used as default for backward compat
+// since this route was SAP-only until A-2a). New endpoints can take systemId
+// in the body; absent → SAP.
+let cachedSapSystemId: string | null = null;
+async function getSapSystemId(): Promise<string> {
+  if (cachedSapSystemId) return cachedSapSystemId;
+  const sys = await prisma.enterpriseSystem.findUnique({ where: { code: 'sap' } });
+  if (!sys) throw new Error('SAP EnterpriseSystem row missing — run multi-system migration');
+  cachedSapSystemId = sys.id;
+  return cachedSapSystemId;
+}
+
 // ══════════════════════════════════════════════════════════════
 // SAP MODULES
 // ══════════════════════════════════════════════════════════════
@@ -13,7 +25,7 @@ router.use(verifyJWT, enforceTenantScope);
 // GET /sap-modules — list all modules (any authenticated user)
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const modules = await prisma.sAPModuleMaster.findMany({
+    const modules = await prisma.moduleMaster.findMany({
       where: { tenantId: req.user!.tenantId },
       include: { subModules: { where: { isActive: true }, orderBy: { sortOrder: 'asc' } } },
       orderBy: { sortOrder: 'asc' },
@@ -27,7 +39,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 // GET /sap-modules/active — only active modules with active submodules (for ticket forms)
 router.get('/active', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const modules = await prisma.sAPModuleMaster.findMany({
+    const modules = await prisma.moduleMaster.findMany({
       where: { tenantId: req.user!.tenantId, isActive: true },
       include: { subModules: { where: { isActive: true }, orderBy: { sortOrder: 'asc' } } },
       orderBy: { sortOrder: 'asc' },
@@ -52,7 +64,7 @@ router.patch(
       if (sortOrder !== undefined) data.sortOrder = sortOrder;
       if (isActive !== undefined) data.isActive = isActive;
 
-      const sub = await prisma.sAPSubModuleMaster.updateMany({
+      const sub = await prisma.subModuleMaster.updateMany({
         where: { id: req.params.id, tenantId: req.user!.tenantId },
         data,
       });
@@ -60,7 +72,7 @@ router.patch(
         res.status(404).json({ success: false, error: 'Sub-module not found' });
         return;
       }
-      const updated = await prisma.sAPSubModuleMaster.findUnique({ where: { id: req.params.id } });
+      const updated = await prisma.subModuleMaster.findUnique({ where: { id: req.params.id } });
       res.json({ success: true, data: updated });
     } catch (err) {
       next(err);
@@ -74,7 +86,7 @@ router.delete(
   enforceRole('SUPER_ADMIN'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const count = await prisma.iTSMRecord.count({ where: { sapSubModuleId: req.params.id } });
+      const count = await prisma.iTSMRecord.count({ where: { subModuleId: req.params.id } });
       if (count > 0) {
         res.status(400).json({
           success: false,
@@ -82,7 +94,7 @@ router.delete(
         });
         return;
       }
-      await prisma.sAPSubModuleMaster.deleteMany({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
+      await prisma.subModuleMaster.deleteMany({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
       res.json({ success: true });
     } catch (err) {
       next(err);
@@ -97,9 +109,11 @@ router.post('/', enforceRole('SUPER_ADMIN'), async (req: Request, res: Response,
       res.status(400).json({ success: false, error: 'Code and name are required' });
       return;
     }
-    const module = await prisma.sAPModuleMaster.create({
+    const systemId = req.body.systemId || (await getSapSystemId());
+    const module = await prisma.moduleMaster.create({
       data: {
         tenantId: req.user!.tenantId,
+        systemId,
         code: code.toUpperCase(),
         name,
         description: description || null,
@@ -127,7 +141,7 @@ router.patch('/:id', enforceRole('SUPER_ADMIN'), async (req: Request, res: Respo
     if (sortOrder !== undefined) data.sortOrder = sortOrder;
     if (isActive !== undefined) data.isActive = isActive;
 
-    const module = await prisma.sAPModuleMaster.updateMany({
+    const module = await prisma.moduleMaster.updateMany({
       where: { id: req.params.id, tenantId: req.user!.tenantId },
       data,
     });
@@ -135,7 +149,7 @@ router.patch('/:id', enforceRole('SUPER_ADMIN'), async (req: Request, res: Respo
       res.status(404).json({ success: false, error: 'Module not found' });
       return;
     }
-    const updated = await prisma.sAPModuleMaster.findUnique({
+    const updated = await prisma.moduleMaster.findUnique({
       where: { id: req.params.id },
       include: { subModules: { orderBy: { sortOrder: 'asc' } } },
     });
@@ -149,15 +163,15 @@ router.patch('/:id', enforceRole('SUPER_ADMIN'), async (req: Request, res: Respo
 router.delete('/:id', enforceRole('SUPER_ADMIN'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Check if any records use this module
-    const count = await prisma.iTSMRecord.count({ where: { sapModuleId: req.params.id } });
+    const count = await prisma.iTSMRecord.count({ where: { moduleId: req.params.id } });
     if (count > 0) {
       res
         .status(400)
         .json({ success: false, error: `Cannot delete: ${count} tickets use this module. Deactivate it instead.` });
       return;
     }
-    await prisma.sAPSubModuleMaster.deleteMany({ where: { moduleId: req.params.id, tenantId: req.user!.tenantId } });
-    await prisma.sAPModuleMaster.deleteMany({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
+    await prisma.subModuleMaster.deleteMany({ where: { moduleId: req.params.id, tenantId: req.user!.tenantId } });
+    await prisma.moduleMaster.deleteMany({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
     res.json({ success: true });
   } catch (err) {
     next(err);
@@ -179,9 +193,19 @@ router.post(
         res.status(400).json({ success: false, error: 'Code and name are required' });
         return;
       }
-      const sub = await prisma.sAPSubModuleMaster.create({
+      // Resolve systemId from the parent module so sub-modules inherit
+      const parentModule = await prisma.moduleMaster.findUnique({
+        where: { id: req.params.moduleId },
+        select: { systemId: true },
+      });
+      if (!parentModule) {
+        res.status(404).json({ success: false, error: 'Parent module not found' });
+        return;
+      }
+      const sub = await prisma.subModuleMaster.create({
         data: {
           tenantId: req.user!.tenantId,
+          systemId: parentModule.systemId,
           moduleId: req.params.moduleId,
           code: code.toUpperCase(),
           name,
@@ -325,27 +349,28 @@ router.post('/seed', enforceRole('SUPER_ADMIN'), async (req: Request, res: Respo
       },
     ];
 
+    const systemId = await getSapSystemId();
     let moduleCount = 0,
       subCount = 0;
     for (let i = 0; i < defaults.length; i++) {
       const d = defaults[i];
-      let mod = await prisma.sAPModuleMaster.findUnique({
-        where: { tenantId_code: { tenantId, code: d.code } },
+      let mod = await prisma.moduleMaster.findUnique({
+        where: { tenantId_systemId_code: { tenantId, systemId, code: d.code } },
       });
       if (!mod) {
-        mod = await prisma.sAPModuleMaster.create({
-          data: { tenantId, code: d.code, name: d.name, sortOrder: (i + 1) * 10 },
+        mod = await prisma.moduleMaster.create({
+          data: { tenantId, systemId, code: d.code, name: d.name, sortOrder: (i + 1) * 10 },
         });
         moduleCount++;
       }
       for (let j = 0; j < d.subs.length; j++) {
         const s = d.subs[j];
-        const existing = await prisma.sAPSubModuleMaster.findUnique({
+        const existing = await prisma.subModuleMaster.findUnique({
           where: { tenantId_moduleId_code: { tenantId, moduleId: mod.id, code: s.code } },
         });
         if (!existing) {
-          await prisma.sAPSubModuleMaster.create({
-            data: { tenantId, moduleId: mod.id, code: s.code, name: s.name, sortOrder: (j + 1) * 10 },
+          await prisma.subModuleMaster.create({
+            data: { tenantId, systemId, moduleId: mod.id, code: s.code, name: s.name, sortOrder: (j + 1) * 10 },
           });
           subCount++;
         }

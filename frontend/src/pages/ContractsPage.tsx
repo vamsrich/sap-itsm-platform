@@ -151,7 +151,7 @@ export function SLAReportPage() {
             priority: r.priority,
             status: r.status,
             recordType: r.recordType,
-            moduleCode: r.sapModule?.code || null,
+            moduleCode: r.module?.code || null,
             agentName,
             createdAt: s.createdAt,
             breachResponse: s.breachResponse,

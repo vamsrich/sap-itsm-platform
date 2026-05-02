@@ -9,7 +9,8 @@ export interface ClassificationInput {
   description: string;
   recordType: string;
   priority: string;
-  sapModuleId: string | null;
+  systemId: string | null;
+  moduleId: string | null;
   sapEdition?: string | null;
 }
 

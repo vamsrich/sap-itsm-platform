@@ -44,7 +44,7 @@ const blank = {
   name: '',
   recordType: '',
   priority: '',
-  sapModuleId: '',
+  moduleId: '',
   assignmentMode: 'RECOMMEND',
   preferredLevel: '',
   sortOrder: 0,
@@ -89,7 +89,7 @@ export default function AssignmentRulesPage() {
       name: r.name,
       recordType: r.recordType || '',
       priority: r.priority || '',
-      sapModuleId: r.sapModuleId || '',
+      moduleId: r.moduleId || '',
       assignmentMode: r.assignmentMode,
       preferredLevel: r.preferredLevel || '',
       sortOrder: r.sortOrder || 0,
@@ -238,10 +238,10 @@ export default function AssignmentRulesPage() {
                         <span>{rule.recordType || 'All Types'}</span>
                         <span>·</span>
                         <span>{rule.priority || 'Any Priority'}</span>
-                        {rule.sapModule && (
+                        {rule.module && (
                           <>
                             <span>·</span>
-                            <span className="font-mono text-blue-600">{rule.sapModule.code}</span>
+                            <span className="font-mono text-blue-600">{rule.module.code}</span>
                           </>
                         )}
                         {rule.preferredLevel && (
@@ -357,8 +357,8 @@ export default function AssignmentRulesPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">SAP Module</label>
               <select
-                value={form.sapModuleId}
-                onChange={(e) => setForm((f) => ({ ...f, sapModuleId: e.target.value }))}
+                value={form.moduleId}
+                onChange={(e) => setForm((f) => ({ ...f, moduleId: e.target.value }))}
                 className={ic}
               >
                 <option value="">Any Module</option>

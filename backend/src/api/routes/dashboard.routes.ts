@@ -171,7 +171,7 @@ router.get('/sla-report', async (req: Request, res: Response, next: NextFunction
             createdAt: true,
             respondedAt: true,
             resolvedAt: true,
-            sapModule: { select: { code: true } },
+            module: { select: { code: true } },
             assignedAgent: { select: { user: { select: { firstName: true, lastName: true } } } },
             customer: { select: { companyName: true } },
           },
@@ -334,7 +334,7 @@ router.get(
             priority: true,
             status: true,
             createdAt: true,
-            sapModule: { select: { code: true } },
+            module: { select: { code: true } },
             customer: { select: { companyName: true } },
             assignedAgent: { select: { user: { select: { firstName: true, lastName: true } } } },
           },
@@ -359,8 +359,8 @@ router.get(
 
         // Module heat map
         (prisma.iTSMRecord.groupBy as any)({
-          by: ['sapModuleId'],
-          where: { ...baseWhere, createdAt: { gte: thirtyDaysAgo }, sapModuleId: { not: null } },
+          by: ['moduleId'],
+          where: { ...baseWhere, createdAt: { gte: thirtyDaysAgo }, moduleId: { not: null } },
           _count: true,
           orderBy: { _count: { id: 'desc' } },
         }),
@@ -399,16 +399,16 @@ router.get(
 
       // Resolve module names for heat map
       const mhArr: any[] = moduleHeat as any[];
-      const moduleIds = mhArr.map((m: any) => m.sapModuleId).filter(Boolean);
+      const moduleIds = mhArr.map((m: any) => m.moduleId).filter(Boolean);
       const modules =
         moduleIds.length > 0
-          ? await prisma.sAPModuleMaster.findMany({
+          ? await prisma.moduleMaster.findMany({
               where: { id: { in: moduleIds } },
               select: { id: true, code: true, name: true },
             })
           : [];
       const moduleHeatResolved = mhArr.map((m: any) => {
-        const mod = modules.find((mm) => mm.id === m.sapModuleId);
+        const mod = modules.find((mm) => mm.id === m.moduleId);
         return { moduleCode: mod?.code || '?', moduleName: mod?.name || '', count: m._count };
       });
 
@@ -498,8 +498,8 @@ router.get('/customer', enforceRole('COMPANY_ADMIN'), async (req: Request, res: 
         take: 5,
       }),
       (prisma.iTSMRecord.groupBy as any)({
-        by: ['sapModuleId'],
-        where: { tenantId, customerId, createdAt: { gte: thirtyDaysAgo }, sapModuleId: { not: null } },
+        by: ['moduleId'],
+        where: { tenantId, customerId, createdAt: { gte: thirtyDaysAgo }, moduleId: { not: null } },
         _count: true,
         orderBy: { _count: { id: 'desc' } },
       }),
@@ -537,10 +537,10 @@ router.get('/customer', enforceRole('COMPANY_ADMIN'), async (req: Request, res: 
 
     // Resolve module names
     const mbArr: any[] = moduleBreakdown as any[];
-    const modIds = mbArr.map((m: any) => m.sapModuleId).filter(Boolean);
+    const modIds = mbArr.map((m: any) => m.moduleId).filter(Boolean);
     const mods =
       modIds.length > 0
-        ? await prisma.sAPModuleMaster.findMany({ where: { id: { in: modIds } }, select: { id: true, code: true } })
+        ? await prisma.moduleMaster.findMany({ where: { id: { in: modIds } }, select: { id: true, code: true } })
         : [];
 
     const avgHrs = (avgResolution as any)?.[0]?.avg_hours || 0;
@@ -553,7 +553,7 @@ router.get('/customer', enforceRole('COMPANY_ADMIN'), async (req: Request, res: 
       slaStatus: { onTrack: slaTotal - slaBreaches, breached: slaBreaches, total: slaTotal },
       awaitingResponse,
       moduleBreakdown: mbArr.map((m: any) => ({
-        code: mods.find((mm) => mm.id === m.sapModuleId)?.code || '?',
+        code: mods.find((mm) => mm.id === m.moduleId)?.code || '?',
         count: m._count,
       })),
       recent,

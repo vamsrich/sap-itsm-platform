@@ -30,9 +30,9 @@ export async function findMatchingRule(params: {
   customerId: string;
   recordType: string;
   priority: string;
-  sapModuleId?: string | null;
+  moduleId?: string | null;
 }) {
-  const { tenantId, customerId, recordType, priority, sapModuleId } = params;
+  const { tenantId, customerId, recordType, priority, moduleId } = params;
 
   // Find matching rules ordered by specificity (most specific first)
   const rules = await prisma.assignmentRule.findMany({
@@ -43,7 +43,7 @@ export async function findMatchingRule(params: {
     },
     include: {
       customer: { select: { companyName: true } },
-      sapModule: { select: { code: true, name: true } },
+      module: { select: { code: true, name: true } },
     },
     orderBy: { sortOrder: 'asc' },
   });
@@ -52,7 +52,7 @@ export async function findMatchingRule(params: {
   for (const rule of rules) {
     const typeMatch = !rule.recordType || rule.recordType === recordType;
     const priorityMatch = !rule.priority || rule.priority === priority;
-    const moduleMatch = !rule.sapModuleId || rule.sapModuleId === sapModuleId;
+    const moduleMatch = !rule.moduleId || rule.moduleId === moduleId;
 
     if (typeMatch && priorityMatch && moduleMatch) {
       return rule;
@@ -66,11 +66,11 @@ export async function scoreAgents(params: {
   tenantId: string;
   customerId: string;
   priority: string;
-  sapModuleId?: string | null;
-  sapSubModuleId?: string | null;
+  moduleId?: string | null;
+  subModuleId?: string | null;
   preferredLevel?: string | null;
 }): Promise<AgentScore[]> {
-  const { tenantId, customerId, priority, sapModuleId, sapSubModuleId, preferredLevel } = params;
+  const { tenantId, customerId, priority, moduleId, subModuleId, preferredLevel } = params;
 
   // Get agents assigned to this customer
   const customerAgents = await prisma.customerAgent.findMany({
@@ -90,7 +90,7 @@ export async function scoreAgents(params: {
     },
     include: {
       user: { select: { firstName: true, lastName: true } },
-      specializations: { select: { sapModuleId: true, sapSubModuleIds: true } },
+      specializations: { select: { moduleId: true, subModuleIds: true } },
       _count: {
         select: {
           assignments: {
@@ -104,16 +104,16 @@ export async function scoreAgents(params: {
   const scores: AgentScore[] = agents.map((agent) => {
     // Module match (30 pts)
     let moduleMatch = 0;
-    if (sapModuleId) {
-      const spec = agent.specializations.find((s) => s.sapModuleId === sapModuleId);
+    if (moduleId) {
+      const spec = agent.specializations.find((s) => s.moduleId === moduleId);
       if (spec) moduleMatch = 30;
     }
 
     // Sub-module match (20 pts)
     let subModuleMatch = 0;
-    if (sapModuleId && sapSubModuleId) {
-      const spec = agent.specializations.find((s) => s.sapModuleId === sapModuleId);
-      if (spec && spec.sapSubModuleIds.includes(sapSubModuleId)) subModuleMatch = 20;
+    if (moduleId && subModuleId) {
+      const spec = agent.specializations.find((s) => s.moduleId === moduleId);
+      if (spec && spec.subModuleIds.includes(subModuleId)) subModuleMatch = 20;
     }
 
     // Level score (25 pts) — higher priority for level match
@@ -170,7 +170,7 @@ export async function scoreAgents(params: {
 export async function roundRobinAgent(params: {
   tenantId: string;
   customerId: string;
-  sapModuleId?: string | null;
+  moduleId?: string | null;
 }): Promise<AgentScore | null> {
   const scores = await scoreAgents({
     ...params,

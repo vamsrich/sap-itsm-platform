@@ -555,16 +555,16 @@ export default function RecordDetailPage() {
                   <p className="text-xs text-gray-400">{record.ci.ciType}</p>
                 </div>
               )}
-              {record.sapModule && (
+              {record.module && (
                 <div>
                   <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">SAP Module</label>
                   <p className="text-sm text-gray-900 mt-1">
-                    <span className="font-mono font-bold text-indigo-600">{record.sapModule.code}</span>{' '}
-                    {record.sapModule.name}
+                    <span className="font-mono font-bold text-indigo-600">{record.module.code}</span>{' '}
+                    {record.module.name}
                   </p>
-                  {record.sapSubModule && (
+                  {record.subModule && (
                     <p className="text-xs text-gray-500 mt-0.5">
-                      <span className="font-mono">{record.sapSubModule.code}</span> — {record.sapSubModule.name}
+                      <span className="font-mono">{record.subModule.code}</span> — {record.subModule.name}
                     </p>
                   )}
                 </div>

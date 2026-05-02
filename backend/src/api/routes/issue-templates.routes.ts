@@ -94,7 +94,7 @@ router.get('/:id/matches', async (req: Request, res: Response, next: NextFunctio
         ...scope.where,
         recordType: 'INCIDENT' as any,
         createdAt: { gte: since },
-        sapModule: { is: { code: tpl.module } },
+        module: { is: { code: tpl.module } },
       },
       select: {
         id: true,
@@ -103,8 +103,8 @@ router.get('/:id/matches', async (req: Request, res: Response, next: NextFunctio
         priority: true,
         status: true,
         createdAt: true,
-        sapModule: { select: { code: true } },
-        sapSubModule: { select: { code: true } },
+        module: { select: { code: true } },
+        subModule: { select: { code: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -116,8 +116,8 @@ router.get('/:id/matches', async (req: Request, res: Response, next: NextFunctio
       priority: r.priority,
       status: r.status,
       createdAt: r.createdAt,
-      module: r.sapModule?.code ?? null,
-      subModule: r.sapSubModule?.code ?? null,
+      module: r.module?.code ?? null,
+      subModule: r.subModule?.code ?? null,
     }));
 
     // Run the matcher with ONLY this template, so we get the precise hits.

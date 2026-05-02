@@ -4,6 +4,8 @@
 // NotImplementedError as a forward-compatibility marker.
 
 import Anthropic from '@anthropic-ai/sdk';
+import { prisma } from '../../config/database';
+import { logger } from '../../config/logger';
 import {
   ChecklistInput,
   ChecklistResult,
@@ -36,14 +38,28 @@ export class AnthropicClient implements LLMClient {
     this.sdk = apiKey ? new Anthropic({ apiKey }) : null;
   }
 
-  async classify(_input: ClassificationInput): Promise<ClassificationResult> {
-    // Phase A-1 stub. Real prompt + structured-JSON response in A-2.
+  async classify(input: ClassificationInput): Promise<ClassificationResult> {
+    // A-2a: still a stub return, but loads ClassifierConfig from DB to
+    // prove the per-system wiring works. A-2b will replace this with a
+    // real Anthropic Messages API call using the loaded config.
+    let firstAllowedModule: string | null = null;
+    if (input.systemId) {
+      const config = await prisma.classifierConfig.findUnique({
+        where: { systemId: input.systemId },
+      });
+      if (config) {
+        logger.info(`[AI] classify loaded ClassifierConfig systemId=${input.systemId} version=${config.version}`);
+        firstAllowedModule = config.modules[0] ?? null;
+      } else {
+        logger.warn(`[AI] classify: no ClassifierConfig for systemId=${input.systemId}`);
+      }
+    }
     return {
-      module: 'FICO',
+      module: firstAllowedModule ?? 'FICO',
       subModule: 'AP',
       businessImpact: 'MEDIUM',
       confidence: 0.0,
-      classifierVersion: 'v0-stub',
+      classifierVersion: 'v0a-stub',
     };
   }
 

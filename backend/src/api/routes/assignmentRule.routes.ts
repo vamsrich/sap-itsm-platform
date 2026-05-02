@@ -32,7 +32,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       where,
       include: {
         customer: { select: { id: true, companyName: true } },
-        sapModule: { select: { id: true, code: true, name: true } },
+        module: { select: { id: true, code: true, name: true } },
       },
       orderBy: [{ customerId: 'asc' }, { sortOrder: 'asc' }],
     });
@@ -45,7 +45,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 // POST /assignment-rules — create rule
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { customerId, name, recordType, priority, sapModuleId, assignmentMode, preferredLevel, sortOrder } = req.body;
+    const { customerId, name, recordType, priority, moduleId, assignmentMode, preferredLevel, sortOrder } = req.body;
     if (!customerId || !name || !assignmentMode) {
       res.status(400).json({ success: false, error: 'Customer, name, and assignment mode are required' });
       return;
@@ -65,7 +65,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
         name,
         recordType: recordType || null,
         priority: priority || null,
-        sapModuleId: sapModuleId || null,
+        moduleId: moduleId || null,
         assignmentMode,
         preferredLevel: preferredLevel || null,
         sortOrder: sortOrder || 0,
@@ -73,7 +73,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       },
       include: {
         customer: { select: { id: true, companyName: true } },
-        sapModule: { select: { id: true, code: true, name: true } },
+        module: { select: { id: true, code: true, name: true } },
       },
     });
     res.status(201).json({ success: true, rule });
@@ -103,7 +103,7 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
       'name',
       'recordType',
       'priority',
-      'sapModuleId',
+      'moduleId',
       'assignmentMode',
       'preferredLevel',
       'sortOrder',
@@ -121,7 +121,7 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
       where: { id: req.params.id },
       include: {
         customer: { select: { id: true, companyName: true } },
-        sapModule: { select: { id: true, code: true, name: true } },
+        module: { select: { id: true, code: true, name: true } },
       },
     });
     res.json({ success: true, rule: updated });
@@ -157,7 +157,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
 // POST /assignment-rules/recommend — get agent recommendations for a ticket
 router.post('/recommend', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { customerId, recordType, priority, sapModuleId, sapSubModuleId } = req.body;
+    const { customerId, recordType, priority, moduleId, subModuleId } = req.body;
     if (!customerId || !priority) {
       res.status(400).json({ success: false, error: 'Customer and priority are required' });
       return;
@@ -169,7 +169,7 @@ router.post('/recommend', async (req: Request, res: Response, next: NextFunction
       customerId,
       recordType,
       priority,
-      sapModuleId,
+      moduleId,
     });
 
     // Score agents
@@ -177,8 +177,8 @@ router.post('/recommend', async (req: Request, res: Response, next: NextFunction
       tenantId: req.user!.tenantId,
       customerId,
       priority,
-      sapModuleId,
-      sapSubModuleId,
+      moduleId,
+      subModuleId,
       preferredLevel: rule?.preferredLevel,
     });
 

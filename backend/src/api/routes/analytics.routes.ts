@@ -72,7 +72,7 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
       avgMttrRaw,
     ] = await Promise.all([
       // Per module: total, open, resolved
-      prisma.sAPModuleMaster.findMany({
+      prisma.moduleMaster.findMany({
         where: { tenantId, isActive: true },
         select: {
           id: true,
@@ -109,8 +109,8 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
 
       // Top 5 modules by volume for heat signal
       (prisma.iTSMRecord.groupBy as any)({
-        by: ['sapModuleId'],
-        where: { ...baseWhere, sapModuleId: { not: null } },
+        by: ['moduleId'],
+        where: { ...baseWhere, moduleId: { not: null } },
         _count: { id: true },
         orderBy: { _count: { id: 'desc' } },
         take: 5,
@@ -152,26 +152,26 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
 
       // Problem records per module (for permanent-fix coverage)
       (prisma.iTSMRecord.groupBy as any)({
-        by: ['sapModuleId'],
-        where: { ...baseWhere, recordType: 'PROBLEM', sapModuleId: { not: null } },
+        by: ['moduleId'],
+        where: { ...baseWhere, recordType: 'PROBLEM', moduleId: { not: null } },
         _count: { id: true },
       }),
 
       // Trend: incidents in current N-day window per module
       (prisma.iTSMRecord.groupBy as any)({
-        by: ['sapModuleId'],
-        where: { ...baseWhere, recordType: 'INCIDENT', sapModuleId: { not: null } },
+        by: ['moduleId'],
+        where: { ...baseWhere, recordType: 'INCIDENT', moduleId: { not: null } },
         _count: { id: true },
       }),
 
       // Trend: incidents in prior N-day window per module
       (prisma.iTSMRecord.groupBy as any)({
-        by: ['sapModuleId'],
+        by: ['moduleId'],
         where: {
           ...scope.where,
           createdAt: { gte: prevSince, lt: since },
           recordType: 'INCIDENT',
-          sapModuleId: { not: null },
+          moduleId: { not: null },
         },
         _count: { id: true },
       }),
@@ -208,17 +208,17 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
     }
 
     const problemsByMod = new Map<string, number>();
-    for (const p of problemsByModule as Array<{ sapModuleId: string | null; _count: { id: number } }>) {
-      if (p.sapModuleId) problemsByMod.set(p.sapModuleId, p._count.id);
+    for (const p of problemsByModule as Array<{ moduleId: string | null; _count: { id: number } }>) {
+      if (p.moduleId) problemsByMod.set(p.moduleId, p._count.id);
     }
 
     const currentByModMap = new Map<string, number>();
-    for (const c of currentByMod as Array<{ sapModuleId: string | null; _count: { id: number } }>) {
-      if (c.sapModuleId) currentByModMap.set(c.sapModuleId, c._count.id);
+    for (const c of currentByMod as Array<{ moduleId: string | null; _count: { id: number } }>) {
+      if (c.moduleId) currentByModMap.set(c.moduleId, c._count.id);
     }
     const prevByModMap = new Map<string, number>();
-    for (const p of prevByMod as Array<{ sapModuleId: string | null; _count: { id: number } }>) {
-      if (p.sapModuleId) prevByModMap.set(p.sapModuleId, p._count.id);
+    for (const p of prevByMod as Array<{ moduleId: string | null; _count: { id: number } }>) {
+      if (p.moduleId) prevByModMap.set(p.moduleId, p._count.id);
     }
 
     // Build module breakdown with health signal
@@ -241,7 +241,7 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
         // Sub-module breakdown
         const subBreakdown = m.subModules
           .map((sm: any) => {
-            const smRecords = records.filter((r: any) => r.sapSubModuleId === sm.id);
+            const smRecords = records.filter((r: any) => r.subModuleId === sm.id);
             return { id: sm.id, code: sm.code, name: sm.name, count: smRecords.length };
           })
           .filter((sm: any) => sm.count > 0);
@@ -375,18 +375,18 @@ router.get('/patterns', async (req: Request, res: Response, next: NextFunction) 
           priority: true,
           status: true,
           createdAt: true,
-          sapModule: { select: { code: true, name: true } },
-          sapSubModule: { select: { code: true, name: true } },
+          module: { select: { code: true, name: true } },
+          subModule: { select: { code: true, name: true } },
         },
       }),
       prisma.issueTemplate.findMany({
         where: { tenantId, isActive: true },
       }),
-      prisma.sAPModuleMaster.findMany({
+      prisma.moduleMaster.findMany({
         where: { tenantId, isActive: true },
         select: { id: true, code: true, name: true },
       }),
-      prisma.sAPSubModuleMaster.findMany({
+      prisma.subModuleMaster.findMany({
         where: { tenantId },
         select: { id: true, code: true, name: true },
       }),
@@ -403,8 +403,8 @@ router.get('/patterns', async (req: Request, res: Response, next: NextFunction) 
       priority: r.priority,
       status: r.status,
       createdAt: r.createdAt,
-      module: r.sapModule?.code ?? null,
-      subModule: r.sapSubModule?.code ?? null,
+      module: r.module?.code ?? null,
+      subModule: r.subModule?.code ?? null,
     }));
     const templates: DbTemplate[] = templateRows.map(toDbTemplate);
 
@@ -424,7 +424,7 @@ router.get('/patterns', async (req: Request, res: Response, next: NextFunction) 
             where: {
               ...scope.where,
               recordType: 'PROBLEM' as any,
-              sapModule: { is: { code: tpl.module } },
+              module: { is: { code: tpl.module } },
               createdAt: { gte: since },
             },
           });
@@ -465,7 +465,7 @@ router.get('/patterns', async (req: Request, res: Response, next: NextFunction) 
           where: {
             ...scope.where,
             recordType: 'PROBLEM' as any,
-            sapModule: { is: { code: c.module } },
+            module: { is: { code: c.module } },
             createdAt: { gte: since },
           },
         });
@@ -558,7 +558,7 @@ router.get('/bottlenecks', async (req: Request, res: Response, next: NextFunctio
         assignedAgent: {
           select: { id: true, user: { select: { firstName: true, lastName: true } } },
         },
-        sapModule: { select: { id: true, code: true, name: true } },
+        module: { select: { id: true, code: true, name: true } },
         contract: { select: { slaPolicyMaster: { select: { priorities: true } } } },
       },
     });
@@ -676,17 +676,17 @@ router.get('/bottlenecks', async (req: Request, res: Response, next: NextFunctio
       { moduleId: string; moduleCode: string; moduleName: string; hours: number[] }
     >();
     for (const r of records) {
-      if (!r.sapModule || !r.resolvedAt) continue;
+      if (!r.module || !r.resolvedAt) continue;
       const hours = (r.resolvedAt.getTime() - r.createdAt.getTime()) / 3600000;
-      if (!moduleHours.has(r.sapModule.id)) {
-        moduleHours.set(r.sapModule.id, {
-          moduleId: r.sapModule.id,
-          moduleCode: r.sapModule.code,
-          moduleName: r.sapModule.name,
+      if (!moduleHours.has(r.module.id)) {
+        moduleHours.set(r.module.id, {
+          moduleId: r.module.id,
+          moduleCode: r.module.code,
+          moduleName: r.module.name,
           hours: [],
         });
       }
-      moduleHours.get(r.sapModule.id)!.hours.push(hours);
+      moduleHours.get(r.module.id)!.hours.push(hours);
     }
     const percentile = (sorted: number[], p: number) => {
       if (sorted.length === 0) return 0;
@@ -714,7 +714,7 @@ router.get('/bottlenecks', async (req: Request, res: Response, next: NextFunctio
     let totalOpened = 0;
     let totalResolved = 0;
     for (const r of records) {
-      const code = r.sapModule?.code || '?';
+      const code = r.module?.code || '?';
       if (!closureMap.has(code)) closureMap.set(code, { moduleCode: code, opened: 0, resolved: 0 });
       const entry = closureMap.get(code)!;
       if (r.createdAt >= sevenDaysAgo) {
@@ -740,7 +740,7 @@ router.get('/bottlenecks', async (req: Request, res: Response, next: NextFunctio
     for (const r of records) {
       if (r.assignedAgentId || !OPEN_STATUSES.includes(r.status)) continue;
       unassignedTotal++;
-      const code = r.sapModule?.code || '?';
+      const code = r.module?.code || '?';
       const age = ageHours(r);
       if (!unassignedMap.has(code)) {
         unassignedMap.set(code, {
@@ -802,8 +802,8 @@ router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunc
 
     // Find module+priority combos with 3+ incidents and NO linked Problem
     const incidentGroups = await (prisma.iTSMRecord.groupBy as any)({
-      by: ['sapModuleId', 'priority'],
-      where: { ...baseWhere, sapModuleId: { not: null } },
+      by: ['moduleId', 'priority'],
+      where: { ...baseWhere, moduleId: { not: null } },
       _count: { id: true },
       having: { id: { _count: { gte: 3 } } },
       orderBy: { _count: { id: 'desc' } },
@@ -812,8 +812,8 @@ router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunc
     const gaps = await Promise.all(
       incidentGroups.map(async (g: any) => {
         const [mod, problemCount, avgResolution, unresolved] = await Promise.all([
-          prisma.sAPModuleMaster.findUnique({
-            where: { id: g.sapModuleId },
+          prisma.moduleMaster.findUnique({
+            where: { id: g.moduleId },
             select: { code: true, name: true },
           }),
           // Check for Problem records
@@ -821,7 +821,7 @@ router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunc
             where: {
               ...scope.where,
               recordType: 'PROBLEM',
-              sapModuleId: g.sapModuleId,
+              moduleId: g.moduleId,
               createdAt: { gte: since },
             },
           }),
@@ -834,7 +834,7 @@ router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunc
               AND record_type = 'INCIDENT' AND resolved_at IS NOT NULL AND created_at >= $4
           `,
             tenantId,
-            g.sapModuleId,
+            g.moduleId,
             g.priority,
             since,
           ),
@@ -842,7 +842,7 @@ router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunc
           prisma.iTSMRecord.count({
             where: {
               ...baseWhere,
-              sapModuleId: g.sapModuleId,
+              moduleId: g.moduleId,
               priority: g.priority,
               status: { notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'] },
             },
@@ -853,7 +853,7 @@ router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunc
         const gapScore = (g._count.id * (unresolved + 1)) / (problemCount + 1);
 
         return {
-          moduleId: g.sapModuleId,
+          moduleId: g.moduleId,
           moduleCode: mod?.code || 'UNKNOWN',
           moduleName: mod?.name || 'Unknown',
           priority: g.priority,
@@ -906,8 +906,8 @@ router.get('/similar/:recordId', async (req: Request, res: Response, next: NextF
       select: {
         id: true,
         title: true,
-        sapModuleId: true,
-        sapSubModuleId: true,
+        moduleId: true,
+        subModuleId: true,
         recordType: true,
         priority: true,
         tags: true,
@@ -926,7 +926,7 @@ router.get('/similar/:recordId', async (req: Request, res: Response, next: NextF
         ...scope.where,
         id: { not: recordId },
         status: { in: ['RESOLVED', 'CLOSED'] },
-        sapModuleId: source.sapModuleId || undefined,
+        moduleId: source.moduleId || undefined,
         resolvedAt: { not: null },
       },
       select: {
@@ -936,8 +936,8 @@ router.get('/similar/:recordId', async (req: Request, res: Response, next: NextF
         priority: true,
         status: true,
         recordType: true,
-        sapModuleId: true,
-        sapSubModuleId: true,
+        moduleId: true,
+        subModuleId: true,
         createdAt: true,
         resolvedAt: true,
         tags: true,
@@ -956,8 +956,8 @@ router.get('/similar/:recordId', async (req: Request, res: Response, next: NextF
     // Score and rank
     const scored = candidates.map((c: any) => {
       let score = 0;
-      if (c.sapModuleId === source.sapModuleId) score += 2;
-      if (c.sapSubModuleId && c.sapSubModuleId === source.sapSubModuleId) score += 3;
+      if (c.moduleId === source.moduleId) score += 2;
+      if (c.subModuleId && c.subModuleId === source.subModuleId) score += 3;
       if (c.priority === source.priority) score += 1;
       if (c.recordType === source.recordType) score += 1;
       // Tag overlap

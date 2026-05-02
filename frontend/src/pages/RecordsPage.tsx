@@ -47,7 +47,7 @@ export default function RecordsPage() {
       r.customer?.companyName || '',
       r.assignedAgent ? `${r.assignedAgent.user?.firstName} ${r.assignedAgent.user?.lastName}` : '',
       r.createdBy ? `${r.createdBy.firstName} ${r.createdBy.lastName}` : '',
-      r.sapModule ? `${r.sapModule.code} - ${r.sapModule.name}` : '',
+      r.module ? `${r.module.code} - ${r.module.name}` : '',
       new Date(r.createdAt).toLocaleDateString(),
       new Date(r.updatedAt).toLocaleDateString(),
     ]);

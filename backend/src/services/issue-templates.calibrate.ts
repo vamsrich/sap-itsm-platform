@@ -94,8 +94,8 @@ async function main(): Promise<number> {
       priority: true,
       status: true,
       createdAt: true,
-      sapModule: { select: { code: true } },
-      sapSubModule: { select: { code: true } },
+      module: { select: { code: true } },
+      subModule: { select: { code: true } },
     },
   });
 
@@ -109,8 +109,8 @@ async function main(): Promise<number> {
     priority: r.priority,
     status: r.status,
     createdAt: r.createdAt,
-    module: r.sapModule?.code ?? null,
-    subModule: r.sapSubModule?.code ?? null,
+    module: r.module?.code ?? null,
+    subModule: r.subModule?.code ?? null,
   }));
 
   // Adapt SeedTemplate[] → DbTemplate[] for the matcher (synthetic ids; we're not

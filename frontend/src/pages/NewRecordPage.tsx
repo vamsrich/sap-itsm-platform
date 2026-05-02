@@ -34,8 +34,8 @@ export default function NewRecordPage() {
     customerId: '',
     assignedAgentId: '',
     tags: '',
-    sapModuleId: '',
-    sapSubModuleId: '',
+    moduleId: '',
+    subModuleId: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -63,7 +63,7 @@ export default function NewRecordPage() {
     queryFn: () => sapModulesApi.active().then((r) => r.data.data || []),
   });
   const sapModules: any[] = sapModulesData || [];
-  const selectedModule = sapModules.find((m: any) => m.id === form.sapModuleId);
+  const selectedModule = sapModules.find((m: any) => m.id === form.moduleId);
   const sapSubModules: any[] = selectedModule?.subModules || [];
 
   const agents: any[] = agentsData || [];
@@ -71,7 +71,7 @@ export default function NewRecordPage() {
   const set = (key: string, val: string) => {
     setForm((f) => {
       const next = { ...f, [key]: val };
-      if (key === 'sapModuleId') next.sapSubModuleId = '';
+      if (key === 'moduleId') next.subModuleId = '';
       if (key === 'customerId') next.assignedAgentId = '';
       return next;
     });
@@ -112,8 +112,8 @@ export default function NewRecordPage() {
       priority: form.priority,
       customerId: form.customerId || undefined,
       assignedAgentId: form.assignedAgentId || undefined,
-      sapModuleId: form.sapModuleId || undefined,
-      sapSubModuleId: form.sapSubModuleId || undefined,
+      moduleId: form.moduleId || undefined,
+      subModuleId: form.subModuleId || undefined,
       tags: form.tags
         .split(',')
         .map((t) => t.trim())
@@ -154,13 +154,13 @@ export default function NewRecordPage() {
               />
             </div>
 
-            {/* SAP Module / Sub-Module */}
+            {/* Module / Sub-Module */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">SAP Module</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Module</label>
                 <select
-                  value={form.sapModuleId}
-                  onChange={(e) => set('sapModuleId', e.target.value)}
+                  value={form.moduleId}
+                  onChange={(e) => set('moduleId', e.target.value)}
                   className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 >
                   <option value="">— Select Module —</option>
@@ -174,12 +174,12 @@ export default function NewRecordPage() {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Sub-Module</label>
                 <select
-                  value={form.sapSubModuleId}
-                  onChange={(e) => set('sapSubModuleId', e.target.value)}
-                  disabled={!form.sapModuleId}
+                  value={form.subModuleId}
+                  onChange={(e) => set('subModuleId', e.target.value)}
+                  disabled={!form.moduleId}
                   className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
                 >
-                  <option value="">{form.sapModuleId ? '— Select Sub-Module —' : '— Select a module first —'}</option>
+                  <option value="">{form.moduleId ? '— Select Sub-Module —' : '— Select a module first —'}</option>
                   {sapSubModules.map((s: any) => (
                     <option key={s.id} value={s.id}>
                       {s.code} — {s.name}

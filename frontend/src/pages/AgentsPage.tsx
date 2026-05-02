@@ -31,8 +31,8 @@ const AGENT_TYPE_COLORS: Record<string, string> = {
 };
 
 interface SpecEntry {
-  sapModuleId: string;
-  sapSubModuleIds: string[];
+  moduleId: string;
+  subModuleIds: string[];
 }
 
 interface AgentForm {
@@ -100,8 +100,8 @@ export default function AgentsPage() {
   };
   const openEdit = (a: any) => {
     const specs: SpecEntry[] = (a.specializations || []).map((s: any) => ({
-      sapModuleId: s.sapModuleId || s.sapModule?.id,
-      sapSubModuleIds: s.sapSubModuleIds || [],
+      moduleId: s.moduleId || s.module?.id,
+      subModuleIds: s.subModuleIds || [],
     }));
     setForm({
       agentType: a.agentType || 'AGENT',
@@ -202,7 +202,7 @@ export default function AgentsPage() {
           agentType: form.agentType,
           specialization:
             form.specializations.length > 0
-              ? sapModules.find((m: any) => m.id === form.specializations[0]?.sapModuleId)?.code || ''
+              ? sapModules.find((m: any) => m.id === form.specializations[0]?.moduleId)?.code || ''
               : '',
           level: form.level,
           timezone: form.timezone,
@@ -230,7 +230,7 @@ export default function AgentsPage() {
           agentType: form.agentType,
           specialization:
             form.specializations.length > 0
-              ? sapModules.find((m: any) => m.id === form.specializations[0]?.sapModuleId)?.code || ''
+              ? sapModules.find((m: any) => m.id === form.specializations[0]?.moduleId)?.code || ''
               : '',
           level: form.level,
           timezone: form.timezone,
@@ -362,7 +362,7 @@ export default function AgentsPage() {
                       <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700">
                         {a.specializations?.length > 0
                           ? a.specializations
-                              .map((s: any) => s.sapModule?.code || s.sapModuleId?.slice(0, 4))
+                              .map((s: any) => s.module?.code || s.moduleId?.slice(0, 4))
                               .join(', ')
                           : a.specialization || '—'}
                       </span>
@@ -636,7 +636,7 @@ export default function AgentsPage() {
                     onClick={() =>
                       setForm((f: AgentForm) => ({
                         ...f,
-                        specializations: [...f.specializations, { sapModuleId: '', sapSubModuleIds: [] }],
+                        specializations: [...f.specializations, { moduleId: '', subModuleIds: [] }],
                       }))
                     }
                     className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
@@ -652,7 +652,7 @@ export default function AgentsPage() {
                       onClick={() =>
                         setForm((f: AgentForm) => ({
                           ...f,
-                          specializations: [{ sapModuleId: '', sapSubModuleIds: [] }],
+                          specializations: [{ moduleId: '', subModuleIds: [] }],
                         }))
                       }
                       className="mt-1 text-xs text-blue-600"
@@ -663,16 +663,16 @@ export default function AgentsPage() {
                 ) : (
                   <div className="space-y-3">
                     {form.specializations.map((spec: SpecEntry, idx: number) => {
-                      const mod = sapModules.find((m: any) => m.id === spec.sapModuleId);
+                      const mod = sapModules.find((m: any) => m.id === spec.moduleId);
                       const subModules = mod?.subModules || [];
                       return (
                         <div key={idx} className="border border-gray-200 rounded-xl p-3 bg-gray-50">
                           <div className="flex items-center gap-2 mb-2">
                             <select
-                              value={spec.sapModuleId}
+                              value={spec.moduleId}
                               onChange={(e) => {
                                 const newSpecs = [...form.specializations];
-                                newSpecs[idx] = { sapModuleId: e.target.value, sapSubModuleIds: [] };
+                                newSpecs[idx] = { moduleId: e.target.value, subModuleIds: [] };
                                 setForm((f: AgentForm) => ({ ...f, specializations: newSpecs }));
                               }}
                               className="flex-1 border border-gray-300 rounded-lg px-2.5 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -681,8 +681,8 @@ export default function AgentsPage() {
                               {sapModules
                                 .filter(
                                   (m: any) =>
-                                    m.id === spec.sapModuleId ||
-                                    !form.specializations.some((s: SpecEntry) => s.sapModuleId === m.id),
+                                    m.id === spec.moduleId ||
+                                    !form.specializations.some((s: SpecEntry) => s.moduleId === m.id),
                                 )
                                 .map((m: any) => (
                                   <option key={m.id} value={m.id}>
@@ -701,26 +701,26 @@ export default function AgentsPage() {
                               <X className="w-4 h-4" />
                             </button>
                           </div>
-                          {spec.sapModuleId && subModules.length > 0 && (
+                          {spec.moduleId && subModules.length > 0 && (
                             <div className="grid grid-cols-3 gap-1.5 mt-2">
                               {subModules.map((sub: any) => (
                                 <label
                                   key={sub.id}
                                   className={`flex items-center gap-1.5 border rounded-lg px-2 py-1.5 cursor-pointer text-xs transition-colors ${
-                                    spec.sapSubModuleIds.includes(sub.id)
+                                    spec.subModuleIds.includes(sub.id)
                                       ? 'border-blue-400 bg-blue-50 text-blue-700 font-medium'
                                       : 'border-gray-200 hover:border-gray-300 text-gray-600'
                                   }`}
                                 >
                                   <input
                                     type="checkbox"
-                                    checked={spec.sapSubModuleIds.includes(sub.id)}
+                                    checked={spec.subModuleIds.includes(sub.id)}
                                     onChange={() => {
                                       const newSpecs = [...form.specializations];
-                                      const current = newSpecs[idx].sapSubModuleIds;
+                                      const current = newSpecs[idx].subModuleIds;
                                       newSpecs[idx] = {
                                         ...newSpecs[idx],
-                                        sapSubModuleIds: current.includes(sub.id)
+                                        subModuleIds: current.includes(sub.id)
                                           ? current.filter((id: string) => id !== sub.id)
                                           : [...current, sub.id],
                                       };

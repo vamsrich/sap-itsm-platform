@@ -184,8 +184,8 @@ model Tenant {
   shifts           Shift[]
   supportTypeMasters SupportTypeMaster[]
   slaPolicyMasters   SLAPolicyMaster[]
-  sapModules         SAPModuleMaster[]
-  sapSubModules      SAPSubModuleMaster[]
+  modules            ModuleMaster[]
+  subModules         SubModuleMaster[]
   assignmentRules    AssignmentRule[]
   holidayCalendars HolidayCalendar[]
   auditLogs        AuditLog[]
@@ -195,6 +195,63 @@ model Tenant {
   issueTemplates    IssueTemplate[]
 
   @@map("tenants")
+}
+
+// ── ENTERPRISE SYSTEMS (multi-system foundation) ──────────────
+//
+// EnterpriseSystem is a tenant-agnostic registry of supported source
+// systems (SAP, NetSuite, Oracle E-Business Suite, Salesforce, Workday).
+// Customers link to one or more systems via CustomerSystem. Modules,
+// templates, tickets, and classifier configs are all scoped per system.
+// Per architecture v2: system-as-data, single codebase.
+
+model EnterpriseSystem {
+  id        String   @id @default(uuid())
+  code      String   @unique                   // 'sap' | 'netsuite' | 'oracle_ebs' | 'salesforce' | 'workday'
+  name      String                              // 'SAP S/4HANA', etc.
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  customers        CustomerSystem[]
+  modules          ModuleMaster[]
+  subModules       SubModuleMaster[]
+  templates        IssueTemplate[]
+  classifierConfig ClassifierConfig?
+  records          ITSMRecord[]
+
+  @@map("enterprise_systems")
+}
+
+model CustomerSystem {
+  customerId String   @map("customer_id")
+  systemId   String   @map("system_id")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  customer Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  system   EnterpriseSystem @relation(fields: [systemId], references: [id])
+
+  @@id([customerId, systemId])
+  @@index([systemId])
+  @@map("customer_systems")
+}
+
+// Per-system LLM classifier config — feeds AnthropicClient.classify().
+// One row per EnterpriseSystem.
+model ClassifierConfig {
+  id                  String   @id @default(uuid())
+  systemId            String   @unique @map("system_id")
+  modules             String[]                                // allowed module codes
+  subModuleConvention String?  @map("sub_module_convention")  // free text
+  systemPrompt        String   @map("system_prompt")
+  fewShotExamples     Json?    @map("few_shot_examples")
+  version             Int      @default(1)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  system EnterpriseSystem @relation(fields: [systemId], references: [id])
+
+  @@map("classifier_configs")
 }
 
 // ── USERS ────────────────────────────────────────────────────
@@ -277,18 +334,18 @@ model Agent {
   @@map("agents")
 }
 
-// Agent SAP specialization — which modules/sub-modules an agent is expert in
+// Agent specialization — which modules/sub-modules an agent is expert in
 model AgentSpecialization {
-  id              String   @id @default(uuid())
-  agentId         String   @map("agent_id")
-  sapModuleId     String   @map("sap_module_id")
-  sapSubModuleIds String[] @map("sap_sub_module_ids")
-  createdAt       DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid())
+  agentId      String   @map("agent_id")
+  moduleId     String   @map("module_id")
+  subModuleIds String[] @map("sub_module_ids")
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  agent     Agent           @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  sapModule SAPModuleMaster @relation(fields: [sapModuleId], references: [id])
+  agent  Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  module ModuleMaster @relation(fields: [moduleId], references: [id])
 
-  @@unique([agentId, sapModuleId])
+  @@unique([agentId, moduleId])
   @@index([agentId])
   @@map("agent_specializations")
 }
@@ -301,7 +358,7 @@ model AssignmentRule {
   name            String
   recordType      String?   @map("record_type")       // INCIDENT, REQUEST, PROBLEM, CHANGE or null=ALL
   priority        String?                               // P1, P2, P3, P4 or null=ANY
-  sapModuleId     String?   @map("sap_module_id")
+  moduleId        String?   @map("module_id")
   assignmentMode  String    @map("assignment_mode")     // AUTO_ASSIGN, RECOMMEND, ROUND_ROBIN
   preferredLevel  String?   @map("preferred_level")     // L1, L2, L3, L4 or null=auto
   sortOrder       Int       @default(0) @map("sort_order")
@@ -309,9 +366,9 @@ model AssignmentRule {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  tenant    Tenant          @relation(fields: [tenantId], references: [id])
-  customer  Customer        @relation(fields: [customerId], references: [id])
-  sapModule SAPModuleMaster? @relation(fields: [sapModuleId], references: [id])
+  tenant   Tenant        @relation(fields: [tenantId], references: [id])
+  customer Customer      @relation(fields: [customerId], references: [id])
+  module   ModuleMaster? @relation(fields: [moduleId], references: [id])
 
   @@index([tenantId, customerId])
   @@index([tenantId, customerId, recordType, priority])
@@ -352,6 +409,7 @@ model Customer {
   records         ITSMRecord[]
   configurationItems ConfigurationItem[]
   assignmentRules    AssignmentRule[]
+  systems         CustomerSystem[]
 
   @@index([tenantId])
   @@index([status])
@@ -432,9 +490,12 @@ model SLAPolicyMaster {
 }
 
 // SAP Module Master: top-level SAP functional modules
-model SAPModuleMaster {
+// Module Master — system-scoped (was SAPModuleMaster).
+// systemId points to EnterpriseSystem (sap, netsuite, oracle_ebs, ...).
+model ModuleMaster {
   id          String   @id @default(uuid())
   tenantId    String   @map("tenant_id")
+  systemId    String   @map("system_id")
   code        String
   name        String
   description String?
@@ -443,21 +504,24 @@ model SAPModuleMaster {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  subModules  SAPSubModuleMaster[]
-  records     ITSMRecord[]       @relation("RecordSAPModule")
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  system     EnterpriseSystem   @relation(fields: [systemId], references: [id])
+  subModules SubModuleMaster[]
+  records    ITSMRecord[]       @relation("RecordModule")
   agentSpecializations AgentSpecialization[]
-  assignmentRules    AssignmentRule[]
+  assignmentRules      AssignmentRule[]
 
-  @@unique([tenantId, code])
+  @@unique([tenantId, systemId, code])
   @@index([tenantId])
-  @@map("sap_module_masters")
+  @@index([systemId])
+  @@map("module_masters")
 }
 
-// SAP Sub-Module Master: child modules under a parent SAP module
-model SAPSubModuleMaster {
+// Sub-Module Master — child modules under a parent ModuleMaster (was SAPSubModuleMaster).
+model SubModuleMaster {
   id          String   @id @default(uuid())
   tenantId    String   @map("tenant_id")
+  systemId    String   @map("system_id")
   moduleId    String   @map("module_id")
   code        String
   name        String
@@ -467,13 +531,15 @@ model SAPSubModuleMaster {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  module      SAPModuleMaster  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  records     ITSMRecord[]     @relation("RecordSAPSubModule")
+  tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  system  EnterpriseSystem @relation(fields: [systemId], references: [id])
+  module  ModuleMaster     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  records ITSMRecord[]     @relation("RecordSubModule")
 
   @@unique([tenantId, moduleId, code])
   @@index([tenantId, moduleId])
-  @@map("sap_sub_module_masters")
+  @@index([systemId])
+  @@map("sub_module_masters")
 }
 
 // ── CONTRACTS ────────────────────────────────────────────────
@@ -637,8 +703,9 @@ model ITSMRecord {
   parentProblemId String?      @map("parent_problem_id")
   createdById     String       @map("created_by")
   tags            String[]     @default([])
-  sapModuleId     String?      @map("sap_module_id")
-  sapSubModuleId  String?      @map("sap_sub_module_id")
+  systemId        String?      @map("system_id")
+  moduleId        String?      @map("module_id")
+  subModuleId     String?      @map("sub_module_id")
   metadata        Json?        @default("{}")
   resolvedAt      DateTime?    @map("resolved_at")
   closedAt        DateTime?    @map("closed_at")
@@ -658,8 +725,9 @@ model ITSMRecord {
   ci              ConfigurationItem? @relation(fields: [ciId], references: [id])
   parentProblem   ITSMRecord?        @relation("ProblemIncidents", fields: [parentProblemId], references: [id])
   linkedIncidents ITSMRecord[]       @relation("ProblemIncidents")
-  sapModule       SAPModuleMaster?   @relation("RecordSAPModule", fields: [sapModuleId], references: [id])
-  sapSubModule    SAPSubModuleMaster? @relation("RecordSAPSubModule", fields: [sapSubModuleId], references: [id])
+  system          EnterpriseSystem?  @relation(fields: [systemId], references: [id])
+  module          ModuleMaster?      @relation("RecordModule", fields: [moduleId], references: [id])
+  subModule       SubModuleMaster?   @relation("RecordSubModule", fields: [subModuleId], references: [id])
   createdBy       User               @relation("CreatedBy", fields: [createdById], references: [id])
   slaTracking     SLATracking?
   timeEntries     TimeEntry[]
@@ -675,6 +743,7 @@ model ITSMRecord {
   @@index([createdAt])
   @@index([assignedAgentId])
   @@index([customerId])
+  @@index([systemId])
   @@map("itsm_records")
 }
 
@@ -906,13 +975,13 @@ model NotificationPreference {
 // ── ISSUE TEMPLATES ──────────────────────────────────────────
 
 model IssueTemplate {
-  id                 String  @id @default(uuid())
-  tenantId           String  @map("tenant_id")
-  enterpriseSystemId String? @map("enterprise_system_id")
-  module             String
-  subModule          String? @map("sub_module")
-  templateKey        String  @map("template_key")
-  label              String
+  id          String  @id @default(uuid())
+  tenantId    String  @map("tenant_id")
+  systemId    String? @map("system_id")    // FK to EnterpriseSystem (was enterpriseSystemId; backfilled to SAP)
+  module      String
+  subModule   String? @map("sub_module")
+  templateKey String  @map("template_key")
+  label       String
 
   // Matching rules — JSON for shape flexibility
   // must:  string[][]  (AND across groups, OR within)
@@ -935,9 +1004,11 @@ model IssueTemplate {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant Tenant            @relation(fields: [tenantId], references: [id])
+  system EnterpriseSystem? @relation(fields: [systemId], references: [id])
 
   @@unique([tenantId, templateKey])
   @@index([tenantId, module, isActive])
+  @@index([systemId])
   @@map("issue_templates")
 }

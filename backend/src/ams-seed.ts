@@ -70,6 +70,10 @@ async function main() {
   });
   console.log('✅ Tenant:', tenant.name);
 
+  // Resolve the SAP EnterpriseSystem id once — used for module/sub-module/ticket creates and customer linking.
+  const sapSystem = await prisma.enterpriseSystem.findUniqueOrThrow({ where: { code: 'sap' } });
+  const sapSystemId = sapSystem.id;
+
   // ── 2. Clear existing tickets only (keep users/agents if exist) ──
   // Delete in safe order
   // Delete in safe dependency order
@@ -298,44 +302,48 @@ async function main() {
   console.log('✅ Agents created');
 
   // ── 5. SAP Modules ────────────────────────────────────────
-  const ficoModule = await prisma.sAPModuleMaster.upsert({
-    where: { tenantId_code: { tenantId: tenant.id, code: 'FICO' } },
+  const ficoModule = await prisma.moduleMaster.upsert({
+    where: { tenantId_systemId_code: { tenantId: tenant.id, systemId: sapSystemId, code: 'FICO' } },
     update: {},
     create: {
       tenantId: tenant.id,
+      systemId: sapSystemId,
       code: 'FICO',
       name: 'Financial Accounting & Controlling',
       isActive: true,
     },
   });
 
-  const mmModule = await prisma.sAPModuleMaster.upsert({
-    where: { tenantId_code: { tenantId: tenant.id, code: 'MM' } },
+  const mmModule = await prisma.moduleMaster.upsert({
+    where: { tenantId_systemId_code: { tenantId: tenant.id, systemId: sapSystemId, code: 'MM' } },
     update: {},
     create: {
       tenantId: tenant.id,
+      systemId: sapSystemId,
       code: 'MM',
       name: 'Materials Management',
       isActive: true,
     },
   });
 
-  const sdModule = await prisma.sAPModuleMaster.upsert({
-    where: { tenantId_code: { tenantId: tenant.id, code: 'SD' } },
+  const sdModule = await prisma.moduleMaster.upsert({
+    where: { tenantId_systemId_code: { tenantId: tenant.id, systemId: sapSystemId, code: 'SD' } },
     update: {},
     create: {
       tenantId: tenant.id,
+      systemId: sapSystemId,
       code: 'SD',
       name: 'Sales & Distribution',
       isActive: true,
     },
   });
 
-  const ppModule = await prisma.sAPModuleMaster.upsert({
-    where: { tenantId_code: { tenantId: tenant.id, code: 'PP' } },
+  const ppModule = await prisma.moduleMaster.upsert({
+    where: { tenantId_systemId_code: { tenantId: tenant.id, systemId: sapSystemId, code: 'PP' } },
     update: {},
     create: {
       tenantId: tenant.id,
+      systemId: sapSystemId,
       code: 'PP',
       name: 'Production Planning',
       isActive: true,
@@ -343,123 +351,128 @@ async function main() {
   });
 
   // Sub-modules
-  const ficoGL = await prisma.sAPSubModuleMaster.upsert({
+  const ficoGL = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-GL' } },
     update: {},
-    create: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-GL', name: 'General Ledger', isActive: true },
+    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: ficoModule.id, code: 'FICO-GL', name: 'General Ledger', isActive: true },
   });
-  const ficoAP = await prisma.sAPSubModuleMaster.upsert({
+  const ficoAP = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-AP' } },
     update: {},
-    create: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-AP', name: 'Accounts Payable', isActive: true },
+    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: ficoModule.id, code: 'FICO-AP', name: 'Accounts Payable', isActive: true },
   });
-  const ficoAR = await prisma.sAPSubModuleMaster.upsert({
+  const ficoAR = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-AR' } },
     update: {},
     create: {
       tenantId: tenant.id,
+      systemId: sapSystemId,
       moduleId: ficoModule.id,
       code: 'FICO-AR',
       name: 'Accounts Receivable',
       isActive: true,
     },
   });
-  const ficoCO = await prisma.sAPSubModuleMaster.upsert({
+  const ficoCO = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-CO' } },
     update: {},
     create: {
       tenantId: tenant.id,
+      systemId: sapSystemId,
       moduleId: ficoModule.id,
       code: 'FICO-CO',
       name: 'Controlling / Cost Center',
       isActive: true,
     },
   });
-  const mmPR = await prisma.sAPSubModuleMaster.upsert({
+  const mmPR = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: mmModule.id, code: 'MM-PR' } },
     update: {},
     create: {
       tenantId: tenant.id,
+      systemId: sapSystemId,
       moduleId: mmModule.id,
       code: 'MM-PR',
       name: 'Procurement / Purchase Orders',
       isActive: true,
     },
   });
-  const mmGR = await prisma.sAPSubModuleMaster.upsert({
+  const mmGR = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: mmModule.id, code: 'MM-GR' } },
     update: {},
     create: {
       tenantId: tenant.id,
+      systemId: sapSystemId,
       moduleId: mmModule.id,
       code: 'MM-GR',
       name: 'Goods Receipt / Goods Issue',
       isActive: true,
     },
   });
-  const mmIM = await prisma.sAPSubModuleMaster.upsert({
+  const mmIM = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: mmModule.id, code: 'MM-IM' } },
     update: {},
-    create: { tenantId: tenant.id, moduleId: mmModule.id, code: 'MM-IM', name: 'Inventory Management', isActive: true },
+    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: mmModule.id, code: 'MM-IM', name: 'Inventory Management', isActive: true },
   });
-  const sdOM = await prisma.sAPSubModuleMaster.upsert({
+  const sdOM = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: sdModule.id, code: 'SD-OM' } },
     update: {},
-    create: { tenantId: tenant.id, moduleId: sdModule.id, code: 'SD-OM', name: 'Order Management', isActive: true },
+    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: sdModule.id, code: 'SD-OM', name: 'Order Management', isActive: true },
   });
-  const sdBI = await prisma.sAPSubModuleMaster.upsert({
+  const sdBI = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: sdModule.id, code: 'SD-BI' } },
     update: {},
-    create: { tenantId: tenant.id, moduleId: sdModule.id, code: 'SD-BI', name: 'Billing & Invoicing', isActive: true },
+    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: sdModule.id, code: 'SD-BI', name: 'Billing & Invoicing', isActive: true },
   });
-  const sdPC = await prisma.sAPSubModuleMaster.upsert({
+  const sdPC = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: sdModule.id, code: 'SD-PC' } },
     update: {},
-    create: { tenantId: tenant.id, moduleId: sdModule.id, code: 'SD-PC', name: 'Pricing & Conditions', isActive: true },
+    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: sdModule.id, code: 'SD-PC', name: 'Pricing & Conditions', isActive: true },
   });
-  const ppMRP = await prisma.sAPSubModuleMaster.upsert({
+  const ppMRP = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ppModule.id, code: 'PP-MRP' } },
     update: {},
     create: {
       tenantId: tenant.id,
+      systemId: sapSystemId,
       moduleId: ppModule.id,
       code: 'PP-MRP',
       name: 'MRP / Demand Planning',
       isActive: true,
     },
   });
-  const ppPO = await prisma.sAPSubModuleMaster.upsert({
+  const ppPO = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ppModule.id, code: 'PP-PO' } },
     update: {},
-    create: { tenantId: tenant.id, moduleId: ppModule.id, code: 'PP-PO', name: 'Production Orders', isActive: true },
+    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: ppModule.id, code: 'PP-PO', name: 'Production Orders', isActive: true },
   });
 
   console.log('✅ SAP modules and sub-modules created');
 
   // ── 6. Agent specializations ──────────────────────────────
   await prisma.agentSpecialization.upsert({
-    where: { agentId_sapModuleId: { agentId: ficoAgent.id, sapModuleId: ficoModule.id } },
+    where: { agentId_moduleId: { agentId: ficoAgent.id, moduleId: ficoModule.id } },
     update: {},
     create: {
       agentId: ficoAgent.id,
-      sapModuleId: ficoModule.id,
-      sapSubModuleIds: [ficoGL.id, ficoAP.id, ficoAR.id, ficoCO.id],
+      moduleId: ficoModule.id,
+      subModuleIds: [ficoGL.id, ficoAP.id, ficoAR.id, ficoCO.id],
     },
   });
   await prisma.agentSpecialization.upsert({
-    where: { agentId_sapModuleId: { agentId: mmAgent.id, sapModuleId: mmModule.id } },
+    where: { agentId_moduleId: { agentId: mmAgent.id, moduleId: mmModule.id } },
     update: {},
-    create: { agentId: mmAgent.id, sapModuleId: mmModule.id, sapSubModuleIds: [mmPR.id, mmGR.id, mmIM.id] },
+    create: { agentId: mmAgent.id, moduleId: mmModule.id, subModuleIds: [mmPR.id, mmGR.id, mmIM.id] },
   });
   await prisma.agentSpecialization.upsert({
-    where: { agentId_sapModuleId: { agentId: sdAgent.id, sapModuleId: sdModule.id } },
+    where: { agentId_moduleId: { agentId: sdAgent.id, moduleId: sdModule.id } },
     update: {},
-    create: { agentId: sdAgent.id, sapModuleId: sdModule.id, sapSubModuleIds: [sdOM.id, sdBI.id, sdPC.id] },
+    create: { agentId: sdAgent.id, moduleId: sdModule.id, subModuleIds: [sdOM.id, sdBI.id, sdPC.id] },
   });
   await prisma.agentSpecialization.upsert({
-    where: { agentId_sapModuleId: { agentId: ppAgent.id, sapModuleId: ppModule.id } },
+    where: { agentId_moduleId: { agentId: ppAgent.id, moduleId: ppModule.id } },
     update: {},
-    create: { agentId: ppAgent.id, sapModuleId: ppModule.id, sapSubModuleIds: [ppMRP.id, ppPO.id] },
+    create: { agentId: ppAgent.id, moduleId: ppModule.id, subModuleIds: [ppMRP.id, ppPO.id] },
   });
 
   console.log('✅ Agent specializations created');
@@ -540,6 +553,11 @@ async function main() {
       contactName: 'Klaus Weber',
       contactEmail: 'it.admin@globalmanufacturing.de',
     },
+  });
+
+  // Link customer to SAP enterprise system
+  await prisma.customerSystem.create({
+    data: { customerId: customer.id, systemId: sapSystem.id },
   });
 
   await prisma.user.update({ where: { id: caUser.id }, data: { customerId: customer.id } });
@@ -642,6 +660,7 @@ async function main() {
     const record = await prisma.iTSMRecord.create({
       data: {
         tenantId: tenant.id,
+        systemId: sapSystemId,
         recordNumber: nextNumber(opts.type),
         recordType: opts.type,
         title: opts.title,
@@ -653,8 +672,8 @@ async function main() {
         ciId: ciProd.id,
         createdById: opts.createdById,
         assignedAgentId: opts.agentId,
-        sapModuleId: opts.moduleId,
-        sapSubModuleId: opts.subModuleId,
+        moduleId: opts.moduleId,
+        subModuleId: opts.subModuleId,
         tags: opts.tags || [],
         parentProblemId: opts.parentProblemId || null,
         createdAt,
@@ -1867,7 +1886,7 @@ async function main() {
   // ── 15. Summary ───────────────────────────────────────────
   const totalTickets = await prisma.iTSMRecord.count({ where: { tenantId: tenant.id } });
   const byModule = await prisma.iTSMRecord.groupBy({
-    by: ['sapModuleId'],
+    by: ['moduleId'],
     where: { tenantId: tenant.id },
     _count: true,
   });

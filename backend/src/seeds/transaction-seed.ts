@@ -62,7 +62,7 @@ async function main() {
     where: { customerId: customer.id },
     include: {
       slaTracking: true,
-      sapModule: { select: { code: true } },
+      module: { select: { code: true } },
     },
   });
   console.log(`\nRecords loaded: ${records.length}\n`);
@@ -247,7 +247,7 @@ async function main() {
       continue;
     }
 
-    const moduleCode = r.sapModule?.code;
+    const moduleCode = r.module?.code;
     const baseHours = moduleCode === 'PP' ? 2.5 : 1.5;
     const numEntries = 1 + Math.floor(Math.random() * 3); // 1, 2, or 3
 

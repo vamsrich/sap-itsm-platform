@@ -21,8 +21,9 @@ export interface CreateRecordInput {
   assignedAgentId?: string;
   ciId?: string;
   parentProblemId?: string;
-  sapModuleId?: string;
-  sapSubModuleId?: string;
+  systemId?: string;
+  moduleId?: string;
+  subModuleId?: string;
   tags?: string[];
   metadata?: Record<string, unknown>;
   tenantId: string;
@@ -62,8 +63,8 @@ const RECORD_SELECT = {
   ciId: true,
   parentProblemId: true,
   tags: true,
-  sapModuleId: true,
-  sapSubModuleId: true,
+  moduleId: true,
+  subModuleId: true,
   metadata: true,
   resolvedAt: true,
   closedAt: true,
@@ -78,8 +79,8 @@ const RECORD_SELECT = {
     select: { id: true, level: true, user: { select: { firstName: true, lastName: true, email: true } } },
   },
   ci: { select: { id: true, name: true, ciType: true } },
-  sapModule: { select: { id: true, code: true, name: true } },
-  sapSubModule: { select: { id: true, code: true, name: true } },
+  module: { select: { id: true, code: true, name: true } },
+  subModule: { select: { id: true, code: true, name: true } },
   createdBy: { select: { id: true, firstName: true, lastName: true, email: true } },
   contract: {
     select: {
@@ -174,7 +175,7 @@ export async function createRecord(input: CreateRecordInput) {
         customerId: input.customerId,
         recordType: input.recordType,
         priority: input.priority,
-        sapModuleId: input.sapModuleId,
+        moduleId: input.moduleId,
       });
 
       if (rule && rule.assignmentMode === 'AUTO_ASSIGN') {
@@ -182,8 +183,8 @@ export async function createRecord(input: CreateRecordInput) {
           tenantId: input.tenantId,
           customerId: input.customerId,
           priority: input.priority,
-          sapModuleId: input.sapModuleId,
-          sapSubModuleId: input.sapSubModuleId,
+          moduleId: input.moduleId,
+          subModuleId: input.subModuleId,
           preferredLevel: rule.preferredLevel,
         });
         const best = scores.find((s) => s.status !== 'OFFLINE' && s.openTickets < s.maxConcurrent);
@@ -192,7 +193,7 @@ export async function createRecord(input: CreateRecordInput) {
         const agent = await roundRobinAgent({
           tenantId: input.tenantId,
           customerId: input.customerId,
-          sapModuleId: input.sapModuleId,
+          moduleId: input.moduleId,
         });
         if (agent) input.assignedAgentId = agent.agentId;
       }
@@ -202,9 +203,30 @@ export async function createRecord(input: CreateRecordInput) {
     }
   }
 
+  // Resolve systemId — explicit input wins; otherwise derive from the customer's
+  // single linked system. If customer has multiple systems, systemId is required.
+  let resolvedSystemId: string | null = input.systemId ?? null;
+  if (!resolvedSystemId && input.customerId) {
+    const customerSystems = await prisma.customerSystem.findMany({
+      where: { customerId: input.customerId, isActive: true },
+      select: { systemId: true },
+    });
+    if (customerSystems.length === 1) {
+      resolvedSystemId = customerSystems[0].systemId;
+    } else if (customerSystems.length > 1) {
+      throw new AppError(
+        'Customer has multiple enterprise systems — systemId is required in the payload',
+        400,
+        'SYSTEM_ID_REQUIRED',
+      );
+    }
+    // 0 systems → leave null (record can be created without a system; AI classifier falls back)
+  }
+
   const record = await prisma.iTSMRecord.create({
     data: {
       tenantId: input.tenantId,
+      systemId: resolvedSystemId,
       recordType: input.recordType,
       recordNumber,
       title: input.title,
@@ -215,8 +237,8 @@ export async function createRecord(input: CreateRecordInput) {
       assignedAgentId: input.assignedAgentId,
       ciId: input.ciId,
       parentProblemId: input.parentProblemId,
-      sapModuleId: input.sapModuleId || null,
-      sapSubModuleId: input.sapSubModuleId || null,
+      moduleId: input.moduleId || null,
+      subModuleId: input.subModuleId || null,
       tags: input.tags || [],
       metadata: (input.metadata || {}) as any,
       createdById: input.createdById,
@@ -354,8 +376,8 @@ export async function updateRecord(
     status: RecordStatus;
     assignedAgentId: string | null;
     ciId: string | null;
-    sapModuleId: string | null;
-    sapSubModuleId: string | null;
+    moduleId: string | null;
+    subModuleId: string | null;
     tags: string[];
     metadata: Record<string, unknown>;
   }>,

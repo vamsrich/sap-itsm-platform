@@ -55,7 +55,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         include: {
           user: { select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true } },
           _count: { select: { assignments: { where: { status: { in: ['NEW', 'OPEN', 'IN_PROGRESS'] } } } } },
-          specializations: { include: { sapModule: { select: { id: true, code: true, name: true } } } },
+          specializations: { include: { module: { select: { id: true, code: true, name: true } } } },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -77,7 +77,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
         _count: { select: { assignments: true, timeEntries: true } },
         specializations: {
           include: {
-            sapModule: {
+            module: {
               select: {
                 id: true,
                 code: true,
@@ -256,7 +256,7 @@ router.put(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const agentId = req.params.id;
-      const specs: Array<{ sapModuleId: string; sapSubModuleIds: string[] }> = req.body.specializations || [];
+      const specs: Array<{ moduleId: string; subModuleIds: string[] }> = req.body.specializations || [];
 
       // Delete existing
       await prisma.agentSpecialization.deleteMany({ where: { agentId } });
@@ -264,13 +264,13 @@ router.put(
       // Create new
       if (specs.length > 0) {
         await prisma.agentSpecialization.createMany({
-          data: specs.map((s) => ({ agentId, sapModuleId: s.sapModuleId, sapSubModuleIds: s.sapSubModuleIds || [] })),
+          data: specs.map((s) => ({ agentId, moduleId: s.moduleId, subModuleIds: s.subModuleIds || [] })),
         });
       }
 
       const updated = await prisma.agentSpecialization.findMany({
         where: { agentId },
-        include: { sapModule: { select: { id: true, code: true, name: true } } },
+        include: { module: { select: { id: true, code: true, name: true } } },
       });
 
       await auditLog({
@@ -278,7 +278,7 @@ router.put(
         action: 'UPDATE',
         entityType: 'Agent',
         entityId: agentId,
-        newValues: { specializations: specs.map((s) => s.sapModuleId) },
+        newValues: { specializations: specs.map((s) => s.moduleId) },
       });
       res.json({ success: true, specializations: updated });
     } catch (err) {

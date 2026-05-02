@@ -255,7 +255,7 @@ async function main() {
   console.log(`✅ Agent shifts assigned (${assigned}/5)`);
 
   // ═══ 8. Assignment Rules (4 module-routing rules) ═══════════════════════════
-  const sapModules = await prisma.sAPModuleMaster.findMany({
+  const sapModules = await prisma.moduleMaster.findMany({
     where: { tenantId: tenant.id, code: { in: ['FICO', 'MM', 'SD', 'PP'] } },
   });
   const moduleByCode = new Map(sapModules.map((m) => [m.code, m]));
@@ -269,7 +269,7 @@ async function main() {
     await upsertAssignmentRule({
       tenantId: tenant.id,
       customerId: customer.id,
-      sapModuleId: mod.id,
+      moduleId: mod.id,
       name: `${code} module routing → L3 specialist`,
       recordType: 'INCIDENT',
       assignmentMode: 'AUTO_ASSIGN',
@@ -367,7 +367,7 @@ async function upsertSLAPolicy(
 async function upsertAssignmentRule(args: {
   tenantId: string;
   customerId: string;
-  sapModuleId: string;
+  moduleId: string;
   name: string;
   recordType: string;
   assignmentMode: string;
@@ -377,14 +377,14 @@ async function upsertAssignmentRule(args: {
     where: {
       tenantId: args.tenantId,
       customerId: args.customerId,
-      sapModuleId: args.sapModuleId,
+      moduleId: args.moduleId,
       recordType: args.recordType,
     },
   });
   const data = {
     tenantId: args.tenantId,
     customerId: args.customerId,
-    sapModuleId: args.sapModuleId,
+    moduleId: args.moduleId,
     name: args.name,
     recordType: args.recordType,
     assignmentMode: args.assignmentMode,
