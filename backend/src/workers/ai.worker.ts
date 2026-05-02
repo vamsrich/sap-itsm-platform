@@ -4,8 +4,9 @@
 // the result back to ITSMRecord.aiClassification.
 //
 // Reliability features (architecture v2 §3 "Job handling"):
-//  - jobId = `${recordId}:${ticketVersion}` → BullMQ auto-dedupes identical
-//    (recordId, ticketVersion) pairs (idempotency)
+//  - jobId = `${recordId}-${ticketVersion}` → BullMQ auto-dedupes identical
+//    (recordId, ticketVersion) pairs (idempotency). '-' separator, not ':',
+//    because BullMQ rejects ':' in custom IDs (reserved for Redis key namespacing).
 //  - 3 attempts with exponential backoff (queue defaults in queues.ts)
 //  - Hard 30s timeout per LLM call (Promise.race below)
 //  - On final failure, write { error } to aiClassification so the agent

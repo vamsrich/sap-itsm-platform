@@ -25,7 +25,9 @@ export function enqueueAIClassification(recordId: string, ticketVersion: number)
   }
   lastEnqueued.set(recordId, now);
 
-  const jobId = `${recordId}:${ticketVersion}`;
+  // jobId uses '-' not ':' — BullMQ disallows ':' in custom IDs
+  // (reserved for internal Redis key namespacing) and rejects the add silently.
+  const jobId = `${recordId}-${ticketVersion}`;
   logger.info(`[AI] enqueue attempt: jobId=${jobId}`);
 
   // Fire-and-forget. Enqueue failures must not block the API response.
