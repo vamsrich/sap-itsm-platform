@@ -70,6 +70,9 @@ const RECORD_SELECT = {
   respondedAt: true,
   createdAt: true,
   updatedAt: true,
+  aiClassification: true,
+  aiClassifiedAt: true,
+  aiVersion: true,
   customer: { select: { id: true, companyName: true, timezone: true } },
   assignedAgent: {
     select: { id: true, level: true, user: { select: { firstName: true, lastName: true, email: true } } },
