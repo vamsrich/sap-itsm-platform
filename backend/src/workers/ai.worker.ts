@@ -45,17 +45,21 @@ async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise
 
 async function processJob(data: AIClassificationJobData): Promise<void> {
   const { recordId } = data;
+  logger.info(`[AI] processJob ENTER recordId=${recordId} ticketVersion=${data.ticketVersion}`);
 
   const record = await prisma.iTSMRecord.findUnique({
     where: { id: recordId },
     include: { tenant: { select: { id: true, sapEdition: true } } },
   });
   if (!record) {
-    logger.warn(`ai-classification: record ${recordId} not found, skipping`);
+    logger.warn(`[AI] processJob: record ${recordId} not found, skipping`);
     return;
   }
+  logger.info(`[AI] processJob loaded record ${record.recordNumber}`);
 
   const client = await getLLMClient(record.tenantId);
+  logger.info(`[AI] processJob got LLM client for tenant ${record.tenantId}`);
+
   const input: ClassificationInput = {
     ticketId: record.id,
     title: record.title,
@@ -67,6 +71,7 @@ async function processJob(data: AIClassificationJobData): Promise<void> {
   };
 
   const result = await withTimeout(client.classify(input), HARD_TIMEOUT_MS, 'classify');
+  logger.info(`[AI] processJob classify returned classifierVersion=${result.classifierVersion}`);
 
   await prisma.iTSMRecord.update({
     where: { id: recordId },
@@ -76,12 +81,15 @@ async function processJob(data: AIClassificationJobData): Promise<void> {
       aiVersion: result.classifierVersion,
     },
   });
+  logger.info(`[AI] processJob EXIT — wrote aiClassification for ${record.recordNumber}`);
 }
 
 export function startAIWorker(): void {
+  logger.info('[AI] startAIWorker invoked, creating BullMQ worker...');
   const worker = new Worker(
     'ai-classification',
     async (job) => {
+      logger.info(`[AI] worker received job ${job.id}`);
       await processJob(job.data as AIClassificationJobData);
     },
     {
@@ -90,12 +98,16 @@ export function startAIWorker(): void {
     },
   );
 
+  worker.on('ready', () => {
+    logger.info('[AI] worker is ready and listening for jobs');
+  });
+
   worker.on('completed', (job) => {
-    logger.debug(`ai-classification job ${job.id} completed`);
+    logger.info(`[AI] job ${job.id} completed successfully`);
   });
 
   worker.on('failed', async (job, err) => {
-    logger.error(`ai-classification job ${job?.id} failed:`, err);
+    logger.error(`[AI] job ${job?.id} failed (attempt ${job?.attemptsMade}/${job?.opts.attempts}): ${err?.message}`);
     // After all retries exhausted, mark the record so the UI can show
     // "AI unavailable" instead of pending forever.
     if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) {

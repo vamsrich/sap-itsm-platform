@@ -20,21 +20,22 @@ export function enqueueAIClassification(recordId: string, ticketVersion: number)
   const now = Date.now();
   const last = lastEnqueued.get(recordId);
   if (last !== undefined && now - last < DEBOUNCE_MS) {
+    logger.info(`[AI] enqueue suppressed by debounce: ${recordId} (last ${now - last}ms ago)`);
     return; // suppressed by debounce window
   }
   lastEnqueued.set(recordId, now);
 
+  const jobId = `${recordId}:${ticketVersion}`;
+  logger.info(`[AI] enqueue attempt: jobId=${jobId}`);
+
   // Fire-and-forget. Enqueue failures must not block the API response.
   aiClassificationQueue
-    .add(
-      'classify',
-      { recordId, ticketVersion },
-      {
-        jobId: `${recordId}:${ticketVersion}`,
-      },
-    )
+    .add('classify', { recordId, ticketVersion }, { jobId })
+    .then((job) => {
+      logger.info(`[AI] enqueue succeeded: jobId=${jobId} bullJobId=${job.id}`);
+    })
     .catch((err) => {
-      logger.error(`enqueueAIClassification(${recordId}) failed:`, err);
+      logger.error(`[AI] enqueue FAILED: jobId=${jobId} err=${err?.message ?? err}`);
       // Roll back the debounce timestamp so the next attempt can retry.
       lastEnqueued.delete(recordId);
     });

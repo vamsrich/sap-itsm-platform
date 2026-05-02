@@ -250,9 +250,11 @@ export async function createRecord(input: CreateRecordInput) {
 
   // Enqueue AI classification (non-blocking; never fails the create path)
   try {
-    enqueueAIClassification(record.id, (record as any).updatedAt?.getTime() ?? Date.now());
+    const ticketVersion = (record as any).updatedAt?.getTime() ?? Date.now();
+    console.log(`[AI] createRecord calling enqueueAIClassification: recordId=${record.id} ticketVersion=${ticketVersion}`);
+    enqueueAIClassification(record.id, ticketVersion);
   } catch (err) {
-    console.error('[AIClassification] enqueue on create failed:', err);
+    console.error('[AI] enqueue on create failed:', err);
   }
 
   return record;
