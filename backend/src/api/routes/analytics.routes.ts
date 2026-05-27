@@ -119,7 +119,7 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
       // MTTR per module (incidents only, resolved subset)
       prisma.$queryRawUnsafe<Array<{ module_id: string; avg_hours: number; p50: number; p90: number }>>(
         `SELECT
-           r.sap_module_id AS module_id,
+           r.module_id,
            ROUND(AVG(EXTRACT(EPOCH FROM (r.resolved_at - r.created_at))/3600)::numeric, 1)::float AS avg_hours,
            ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (r.resolved_at - r.created_at))/3600)::numeric, 1)::float AS p50,
            ROUND(PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (r.resolved_at - r.created_at))/3600)::numeric, 1)::float AS p90
@@ -128,8 +128,8 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
            AND r.record_type = 'INCIDENT'
            AND r.resolved_at IS NOT NULL
            AND r.created_at >= $2
-           AND r.sap_module_id IS NOT NULL
-         GROUP BY r.sap_module_id`,
+           AND r.module_id IS NOT NULL
+         GROUP BY r.module_id`,
         tenantId,
         since,
       ),
@@ -137,15 +137,15 @@ router.get('/classification', async (req: Request, res: Response, next: NextFunc
       // Effort hours per module (TimeEntry × ITSMRecord)
       prisma.$queryRawUnsafe<Array<{ module_id: string; hours: number }>>(
         `SELECT
-           r.sap_module_id AS module_id,
+           r.module_id,
            SUM(te.hours)::float AS hours
          FROM time_entries te
          JOIN itsm_records r ON r.id = te.record_id
          WHERE r.tenant_id = $1
            AND te.work_date >= $2
            AND te.status IN ('APPROVED', 'PENDING')
-           AND r.sap_module_id IS NOT NULL
-         GROUP BY r.sap_module_id`,
+           AND r.module_id IS NOT NULL
+         GROUP BY r.module_id`,
         tenantId,
         since,
       ),
@@ -830,7 +830,7 @@ router.get('/knowledge-gaps', async (req: Request, res: Response, next: NextFunc
             `
             SELECT ROUND(AVG(EXTRACT(EPOCH FROM (resolved_at - created_at))/3600)::numeric, 1) as avg_hours
             FROM itsm_records
-            WHERE tenant_id = $1 AND sap_module_id = $2 AND priority = $3
+            WHERE tenant_id = $1 AND module_id = $2 AND priority = $3
               AND record_type = 'INCIDENT' AND resolved_at IS NOT NULL AND created_at >= $4
           `,
             tenantId,
