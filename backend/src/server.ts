@@ -9,6 +9,7 @@ import { startEscalationWorker } from './workers/escalation.worker';
 import { startAIWorker } from './workers/ai.worker';
 import { seedDatabase } from './seed';
 import { bootstrapIssueTemplates } from './services/issue-templates.service';
+import { migrateFicoToFiCo } from './seeds/migrate-fico-to-fi-co';
 import bcrypt from 'bcryptjs';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -152,6 +153,21 @@ async function bootstrap() {
       }
     } catch (e: any) {
       logger.warn('[issue-templates] bootstrap skipped:', e?.message || e);
+    }
+
+    // One-shot FICO → FI/CO split. Noop after the first successful run.
+    try {
+      const tenants = await prisma.tenant.findMany({ where: { status: 'ACTIVE' }, select: { id: true, slug: true } });
+      for (const t of tenants) {
+        const r = await migrateFicoToFiCo(prisma, t.id);
+        if (r) {
+          logger.info(
+            `[fico→fi/co] tenant ${t.slug}: tickets=${r.ticketsRemapped}, specs=${r.specsSplit}, rules=${r.rulesDeleted}, ficoDeactivated=${r.ficoDeactivated}`,
+          );
+        }
+      }
+    } catch (e: any) {
+      logger.warn('[fico→fi/co] migration skipped:', e?.message || e);
     }
 
     // Bootstrap default agent-scoring weights per customer (idempotent).

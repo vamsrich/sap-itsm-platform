@@ -3,20 +3,20 @@
  *
  * Realistic AMS seed for ServiceDeskPro intelligence validation.
  * Client: GlobalManufacturing AG (mid-size SAP AMS client)
- * Modules: FICO, MM, SD, PP — with realistic ticket patterns
+ * Modules: FI, CO, MM, SD, PP — with realistic ticket patterns
  *
  * Run via Railway admin endpoint: POST /admin/ams-seed
  * Or add to startup.ts with AMS_SEED=true env var
  *
  * Ticket volumes (last 90 days):
- *   FICO — 28 tickets (GL, AP, AR, Asset Accounting)
+ *   FI — ~24 tickets (GL, AP, AR), CO — ~4 tickets (Cost Center)
  *   MM   — 22 tickets (Procurement, Inventory, GR/GI)
  *   SD   — 18 tickets (Order Management, Billing, Pricing)
  *   PP   — 14 tickets (MRP, Production Orders, BOM)
  *   Total: 82 tickets across incidents, requests, problems, changes
  *
  * Patterns built in for intelligence validation:
- *   - FICO/AP: 7 recurring payment run failures → knowledge gap signal
+ *   - FI/AP: 7 recurring payment run failures → knowledge gap signal
  *   - MM/GR: 5 GR/GI posting errors → pattern detection
  *   - SD/Pricing: 4 pricing condition errors → recurring pattern
  *   - PP/MRP: Problem record exists for MRP exceptions
@@ -248,7 +248,7 @@ async function main() {
     update: {},
     create: {
       userId: ficoAgentUser.id,
-      specialization: 'SAP FICO',
+      specialization: 'SAP FI/CO',
       level: 'L3',
       timezone: 'Asia/Kolkata',
       maxConcurrent: 10,
@@ -302,14 +302,27 @@ async function main() {
   console.log('✅ Agents created');
 
   // ── 5. SAP Modules ────────────────────────────────────────
-  const ficoModule = await prisma.moduleMaster.upsert({
-    where: { tenantId_systemId_code: { tenantId: tenant.id, systemId: sapSystemId, code: 'FICO' } },
+  // FI and CO are separate top-level modules (was FICO combined).
+  const fiModule = await prisma.moduleMaster.upsert({
+    where: { tenantId_systemId_code: { tenantId: tenant.id, systemId: sapSystemId, code: 'FI' } },
     update: {},
     create: {
       tenantId: tenant.id,
       systemId: sapSystemId,
-      code: 'FICO',
-      name: 'Financial Accounting & Controlling',
+      code: 'FI',
+      name: 'Financial Accounting',
+      isActive: true,
+    },
+  });
+
+  const coModule = await prisma.moduleMaster.upsert({
+    where: { tenantId_systemId_code: { tenantId: tenant.id, systemId: sapSystemId, code: 'CO' } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      systemId: sapSystemId,
+      code: 'CO',
+      name: 'Controlling',
       isActive: true,
     },
   });
@@ -350,40 +363,32 @@ async function main() {
     },
   });
 
-  // Sub-modules
-  const ficoGL = await prisma.subModuleMaster.upsert({
-    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-GL' } },
+  // FI sub-modules (GL, AP, AR — others can be added later as needed)
+  const fiGL = await prisma.subModuleMaster.upsert({
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: fiModule.id, code: 'GL' } },
     update: {},
-    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: ficoModule.id, code: 'FICO-GL', name: 'General Ledger', isActive: true },
+    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: fiModule.id, code: 'GL', name: 'General Ledger', isActive: true },
   });
-  const ficoAP = await prisma.subModuleMaster.upsert({
-    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-AP' } },
+  const fiAP = await prisma.subModuleMaster.upsert({
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: fiModule.id, code: 'AP' } },
     update: {},
-    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: ficoModule.id, code: 'FICO-AP', name: 'Accounts Payable', isActive: true },
+    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: fiModule.id, code: 'AP', name: 'Accounts Payable', isActive: true },
   });
-  const ficoAR = await prisma.subModuleMaster.upsert({
-    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-AR' } },
+  const fiAR = await prisma.subModuleMaster.upsert({
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: fiModule.id, code: 'AR' } },
     update: {},
-    create: {
-      tenantId: tenant.id,
-      systemId: sapSystemId,
-      moduleId: ficoModule.id,
-      code: 'FICO-AR',
-      name: 'Accounts Receivable',
-      isActive: true,
-    },
+    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: fiModule.id, code: 'AR', name: 'Accounts Receivable', isActive: true },
   });
-  const ficoCO = await prisma.subModuleMaster.upsert({
-    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: ficoModule.id, code: 'FICO-CO' } },
+  // CO sub-modules: CCA (cost center) + PC (product costing)
+  const coCCA = await prisma.subModuleMaster.upsert({
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: coModule.id, code: 'CCA' } },
     update: {},
-    create: {
-      tenantId: tenant.id,
-      systemId: sapSystemId,
-      moduleId: ficoModule.id,
-      code: 'FICO-CO',
-      name: 'Controlling / Cost Center',
-      isActive: true,
-    },
+    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: coModule.id, code: 'CCA', name: 'Cost Center Accounting', isActive: true },
+  });
+  const coPC = await prisma.subModuleMaster.upsert({
+    where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: coModule.id, code: 'PC' } },
+    update: {},
+    create: { tenantId: tenant.id, systemId: sapSystemId, moduleId: coModule.id, code: 'PC', name: 'Product Costing', isActive: true },
   });
   const mmPR = await prisma.subModuleMaster.upsert({
     where: { tenantId_moduleId_code: { tenantId: tenant.id, moduleId: mmModule.id, code: 'MM-PR' } },
@@ -450,14 +455,16 @@ async function main() {
   console.log('✅ SAP modules and sub-modules created');
 
   // ── 6. Agent specializations ──────────────────────────────
+  // Rajesh covers both FI and CO, so two specs (was one FICO spec).
   await prisma.agentSpecialization.upsert({
-    where: { agentId_moduleId: { agentId: ficoAgent.id, moduleId: ficoModule.id } },
-    update: {},
-    create: {
-      agentId: ficoAgent.id,
-      moduleId: ficoModule.id,
-      subModuleIds: [ficoGL.id, ficoAP.id, ficoAR.id, ficoCO.id],
-    },
+    where: { agentId_moduleId: { agentId: ficoAgent.id, moduleId: fiModule.id } },
+    update: { subModuleIds: [fiGL.id, fiAP.id, fiAR.id] },
+    create: { agentId: ficoAgent.id, moduleId: fiModule.id, subModuleIds: [fiGL.id, fiAP.id, fiAR.id] },
+  });
+  await prisma.agentSpecialization.upsert({
+    where: { agentId_moduleId: { agentId: ficoAgent.id, moduleId: coModule.id } },
+    update: { subModuleIds: [coCCA.id, coPC.id] },
+    create: { agentId: ficoAgent.id, moduleId: coModule.id, subModuleIds: [coCCA.id, coPC.id] },
   });
   await prisma.agentSpecialization.upsert({
     where: { agentId_moduleId: { agentId: mmAgent.id, moduleId: mmModule.id } },
@@ -697,9 +704,9 @@ async function main() {
     return record;
   }
 
-  console.log('📋 Creating FICO tickets...');
+  console.log('📋 Creating FI / CO tickets...');
 
-  // ── FICO TICKETS (28 total) ────────────────────────────────
+  // ── FI / CO TICKETS (28 total: ~24 FI + ~4 CO) ─────────────
 
   // GL — 6 tickets
   await createTicket({
@@ -709,8 +716,8 @@ async function main() {
       'Finance team unable to open posting period for period 12/2025 in production. T-code OB52 shows period locked. Month-end closing is blocked.',
     priority: 'P1',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoGL.id,
+    moduleId: fiModule.id,
+    subModuleId: fiGL.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 45,
@@ -724,8 +731,8 @@ async function main() {
       'Document splitting activated for profit center accounting but line items not being split correctly for cross-segment postings. Affects financial reports.',
     priority: 'P2',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoGL.id,
+    moduleId: fiModule.id,
+    subModuleId: fiGL.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 38,
@@ -739,8 +746,8 @@ async function main() {
       "Monthly FX revaluation job SAPF100 posting with yesterday's exchange rate instead of month-end rate. Affects balance sheet valuation for USD/EUR positions.",
     priority: 'P2',
     status: 'IN_PROGRESS',
-    moduleId: ficoModule.id,
-    subModuleId: ficoGL.id,
+    moduleId: fiModule.id,
+    subModuleId: fiGL.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdHoursAgo: 4,
@@ -753,8 +760,8 @@ async function main() {
       'Request to create new GL account 0020450 for capital expenditure tracking per finance directive FIN-2026-003. Chart of accounts: GLAG. Account group: ANLAGEN.',
     priority: 'P3',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoGL.id,
+    moduleId: fiModule.id,
+    subModuleId: fiGL.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 22,
@@ -768,8 +775,8 @@ async function main() {
       'Configuration change to activate fiscal year variant V6 (April-March) for new subsidiary DE01. Requires transport DEVK900123 to PRD. CAB approved ref CAB-2026-045.',
     priority: 'P2',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoGL.id,
+    moduleId: fiModule.id,
+    subModuleId: fiGL.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 30,
@@ -783,8 +790,8 @@ async function main() {
       'Intercompany postings between DE01 and DE02 failing with message F5 263 — clearing account not found. Blocking month-end intercompany reconciliation.',
     priority: 'P2',
     status: 'OPEN',
-    moduleId: ficoModule.id,
-    subModuleId: ficoGL.id,
+    moduleId: fiModule.id,
+    subModuleId: fiGL.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdHoursAgo: 3,
@@ -799,8 +806,8 @@ async function main() {
       'Root cause investigation for 7 incidents of F110 payment run failures in last 60 days. Pattern: failures occur on last business day of month. Suspected: BSEG table lock during payment run + parallel batch jobs. No permanent fix in place.',
     priority: 'P2',
     status: 'IN_PROGRESS',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAP.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAP.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdHoursAgo: 14,
@@ -814,8 +821,8 @@ async function main() {
       'Monthly payment run F110 terminated after 45 minutes with ABAP short dump TSV_TNEW_PAGE_ALLOC_FAILED. Table BSEG locked. 234 vendor payments not processed. Finance escalating to CFO.',
     priority: 'P1',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAP.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAP.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 62,
@@ -830,8 +837,8 @@ async function main() {
       'Payment run F110 failing for company code DE01 with error "House bank DEUTDEDB not found in payment parameters". 89 urgent vendor payments blocked. Month-end impact.',
     priority: 'P1',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAP.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAP.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 52,
@@ -846,8 +853,8 @@ async function main() {
       'Payment run F110 not selecting 45 vendor invoices that are due. Payment terms ZB30 not being evaluated correctly. Manual workaround applied — business blocked.',
     priority: 'P2',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAP.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAP.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 42,
@@ -862,8 +869,8 @@ async function main() {
       'Duplicate payment created by F110 run — vendor invoice 4500012345 paid twice. Total duplicate amount EUR 45,230. Reversal and vendor credit note required urgently.',
     priority: 'P1',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAP.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAP.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 33,
@@ -878,8 +885,8 @@ async function main() {
       'Payment run F110 cancelled due to spool overflow on SAP print server. Debit memo print job blocking payment advice output. 156 payments not executed.',
     priority: 'P2',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAP.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAP.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 25,
@@ -894,8 +901,8 @@ async function main() {
       'Payment run F110 completed but SEPA XML file (pain.001) not generated for bank upload. Bank submission deadline in 2 hours. Payment format configuration issue suspected.',
     priority: 'P1',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAP.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAP.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 18,
@@ -910,8 +917,8 @@ async function main() {
       'Latest occurrence of recurring F110 failure. Payment run terminated at 02:30 AM. Finance team discovered at 08:00 AM. Month-end payment deadline missed. Escalated to PM.',
     priority: 'P1',
     status: 'OPEN',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAP.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAP.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdHoursAgo: 1.5,
@@ -927,8 +934,8 @@ async function main() {
       'Dunning program F150 sending dunning letters with incorrect open item amounts. Letters show EUR 0 balance for customers with outstanding invoices. Customer complaints received.',
     priority: 'P2',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAR.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAR.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 40,
@@ -942,8 +949,8 @@ async function main() {
       'Customer account 10045623 blocked for orders due to incorrect credit limit calculation. Customer has paid all invoices. System showing stale credit exposure. EUR 280,000 sales order on hold.',
     priority: 'P2',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAR.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAR.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 28,
@@ -957,8 +964,8 @@ async function main() {
       'Request to extend credit limit for GlobalManufacturing key customer Deutsche Bahn AG from EUR 350,000 to EUR 500,000 per approval from CFO ref FIN-APPR-2026-019.',
     priority: 'P3',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAR.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAR.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 15,
@@ -972,8 +979,8 @@ async function main() {
       'Bank statement upload via FEBP not auto-clearing customer invoices. 23 incoming payments sitting in clearing account 11000010. Manual clearing effort blocking AR team.',
     priority: 'P2',
     status: 'IN_PROGRESS',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAR.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAR.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdHoursAgo: 5,
@@ -986,8 +993,8 @@ async function main() {
       'AR aging report S_ALR_87012178 showing incorrect outstanding balances for GBP-denominated customer accounts. Suspected FX translation issue in reporting.',
     priority: 'P3',
     status: 'NEW',
-    moduleId: ficoModule.id,
-    subModuleId: ficoAR.id,
+    moduleId: fiModule.id,
+    subModuleId: fiAR.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 1,
@@ -1002,8 +1009,8 @@ async function main() {
       'Annual cost center planning upload via KP06 failing for cost centers 100100-100150. Error: "Plan version 0 locked for planning". Finance planning deadline tomorrow.',
     priority: 'P2',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoCO.id,
+    moduleId: coModule.id,
+    subModuleId: coCCA.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 35,
@@ -1017,8 +1024,8 @@ async function main() {
       'Internal order KO88 settlement failing for orders IO-2026-0045 through IO-2026-0067. Error: receiver cost center 200450 not valid for settlement period 01/2026.',
     priority: 'P2',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoCO.id,
+    moduleId: coModule.id,
+    subModuleId: coCCA.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 20,
@@ -1032,8 +1039,8 @@ async function main() {
       'Create new profit center PC-2026-EMEA in SAP as per org restructure memo ORG-2026-012. Valid from 01.04.2026. Assign to profit center group EMEA-PC-GRP.',
     priority: 'P3',
     status: 'RESOLVED',
-    moduleId: ficoModule.id,
-    subModuleId: ficoCO.id,
+    moduleId: coModule.id,
+    subModuleId: coCCA.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdDaysAgo: 12,
@@ -1047,15 +1054,15 @@ async function main() {
       'Standard cost estimate CK11N returning zero material costs for finished goods (FERT) material group. BOM explosion working but activity costs not picking up. Month-end costing run at risk.',
     priority: 'P2',
     status: 'OPEN',
-    moduleId: ficoModule.id,
-    subModuleId: ficoCO.id,
+    moduleId: coModule.id,
+    subModuleId: coCCA.id,
     agentId: ficoAgent.id,
     createdById: endUser1.id,
     createdHoursAgo: 2,
     tags: ['product-costing', 'ck11n', 'bom', 'co'],
   });
 
-  console.log('✅ FICO tickets created (28)');
+  console.log('✅ FI / CO tickets created (28)');
   console.log('📋 Creating MM tickets...');
 
   // ── MM TICKETS (22 total) ──────────────────────────────────
@@ -1896,20 +1903,20 @@ async function main() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`  Client:  GlobalManufacturing AG`);
   console.log(`  Tickets: ${totalTickets} total`);
-  console.log(`  Modules: FICO (28) · MM (22) · SD (18) · PP (14)`);
+  console.log(`  Modules: FI/CO (28) · MM (22) · SD (18) · PP (14)`);
   console.log('');
   console.log('  Intelligence patterns built in:');
-  console.log('  ✓ FICO/AP — 7 recurring F110 failures → knowledge gap');
+  console.log('  ✓ FI/AP — 7 recurring F110 failures → knowledge gap');
   console.log('  ✓ MM/GR  — 5 recurring GR errors → pattern detected');
   console.log('  ✓ SD/PC  — 7 recurring pricing issues → pattern detected');
   console.log('  ✓ PP/MRP — Problem record + 5 linked incidents');
-  console.log('  ✓ Problem records for FICO-AP, MM-GR, PP-MRP');
+  console.log('  ✓ Problem records for FI-AP, MM-GR, PP-MRP');
   console.log('');
   console.log('  Login credentials (password: Admin@123456)');
   console.log('  ─────────────────────────────────────────');
   console.log('  Super Admin  : admin@intraedge.com');
   console.log('  Project Mgr  : priya.sharma@intraedge.com');
-  console.log('  FICO Agent   : rajesh.kumar@intraedge.com');
+  console.log('  FI/CO Agent  : rajesh.kumar@intraedge.com');
   console.log('  MM Agent     : anitha.reddy@intraedge.com');
   console.log('  SD Agent     : vikram.nair@intraedge.com');
   console.log('  PP Agent     : deepa.menon@intraedge.com');

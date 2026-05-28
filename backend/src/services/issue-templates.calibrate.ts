@@ -35,7 +35,7 @@ const EXPECTATIONS: Expectation[] = [
   { templateKey: 'mm-gr-posting-error', expected: 3, isAnchor: true },
   { templateKey: 'sd-pricing-condition', expected: 7, isAnchor: true },
   { templateKey: 'pp-mrp-run-issue', expected: 5, isAnchor: true },
-  // FICO secondary
+  // FI / CO secondary (legacy "fico-" prefixes kept as slugs only)
   { templateKey: 'fico-gl-period', expected: 1, isAnchor: false },
   { templateKey: 'fico-credit-block', expected: 1, isAnchor: false },
   { templateKey: 'fico-co-cost-allocation', expected: 2, isAnchor: false },

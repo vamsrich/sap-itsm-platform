@@ -55,7 +55,7 @@ export class AnthropicClient implements LLMClient {
       }
     }
     return {
-      module: firstAllowedModule ?? 'FICO',
+      module: firstAllowedModule ?? 'FI',
       subModule: 'AP',
       businessImpact: 'MEDIUM',
       confidence: 0.0,

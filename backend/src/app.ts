@@ -183,7 +183,7 @@ app.post('/admin/ams-seed', async (_req, res) => {
     res.json({
       success: true,
       message:
-        'AMS seed complete — GlobalManufacturing AG data loaded with 82 realistic tickets across FICO, MM, SD, PP',
+        'AMS seed complete — GlobalManufacturing AG data loaded with 82 realistic tickets across FI, CO, MM, SD, PP',
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

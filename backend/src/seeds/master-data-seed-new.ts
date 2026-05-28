@@ -15,6 +15,9 @@
  *   7. Sets Agent.shiftId for the 5 AMS agents (PM on India Day, 4 specialists on 2 PM IST)
  *   8. Creates 4 AssignmentRules (one per SAP module, AUTO_ASSIGN to L3 specialists)
  *
+ * This file is the canonical master-data seed source referenced by CLAUDE.md.
+ * See docs/design/master-data-seed-v1.md for design details.
+ *
  * NOT auto-on-boot. Standalone CLI only. Re-runnable safely.
  *
  * NOTE: P1 PM-notify rule was dropped — AssignmentRule.assignmentMode supports
@@ -254,13 +257,13 @@ async function main() {
   }
   console.log(`✅ Agent shifts assigned (${assigned}/5)`);
 
-  // ═══ 8. Assignment Rules (4 module-routing rules) ═══════════════════════════
+  // ═══ 8. Assignment Rules (5 module-routing rules: FI/CO/MM/SD/PP) ═══════════
   const sapModules = await prisma.moduleMaster.findMany({
-    where: { tenantId: tenant.id, code: { in: ['FICO', 'MM', 'SD', 'PP'] } },
+    where: { tenantId: tenant.id, code: { in: ['FI', 'CO', 'MM', 'SD', 'PP'] } },
   });
   const moduleByCode = new Map(sapModules.map((m) => [m.code, m]));
 
-  for (const code of ['FICO', 'MM', 'SD', 'PP']) {
+  for (const code of ['FI', 'CO', 'MM', 'SD', 'PP']) {
     const mod = moduleByCode.get(code);
     if (!mod) {
       console.log(`⚠️  SAP Module ${code} not found — skipping rule`);
@@ -276,7 +279,7 @@ async function main() {
       preferredLevel: 'L3',
     });
   }
-  console.log('✅ Assignment Rules: 4 module-routing rules (FICO/MM/SD/PP → L3 specialists)');
+  console.log('✅ Assignment Rules: 5 module-routing rules (FI/CO/MM/SD/PP → L3 specialists)');
 
   console.log('\n🎉 Master Data Seed v1 complete\n');
 }

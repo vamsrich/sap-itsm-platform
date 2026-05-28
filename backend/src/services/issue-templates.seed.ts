@@ -37,7 +37,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
 
   {
     templateKey: 'fico-f110-payment-run',
-    module: 'FICO',
+    module: 'FI',
     subModule: 'AP',
     label: 'F110 Payment Run Failure',
     must: [
@@ -121,11 +121,11 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
     boost: ['planned order', 'pd material', 'rescheduling', 'sd-pp interface'],
   },
 
-  // ═══ FICO SECONDARY ═════════════════════════════════════════════════════════
+  // ═══ FI / CO SECONDARY ══════════════════════════════════════════════════════
 
   {
     templateKey: 'fico-gl-period',
-    module: 'FICO',
+    module: 'FI',
     subModule: 'GL',
     label: 'GL Period Closing',
     must: [
@@ -136,7 +136,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
 
   {
     templateKey: 'fico-credit-block',
-    module: 'FICO',
+    module: 'FI',
     subModule: 'AR',
     label: 'Customer Credit Block',
     must: [
@@ -147,8 +147,8 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
 
   {
     templateKey: 'fico-co-cost-allocation',
-    module: 'FICO',
-    subModule: 'CO',
+    module: 'CO',
+    subModule: 'CCA',
     label: 'CO Cost Center / Internal Order',
     must: [
       ['cost center', 'internal order', 'kp06', 'ksu5', 'ko88', 'cost element'],
@@ -158,7 +158,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
 
   {
     templateKey: 'fico-document-splitting',
-    module: 'FICO',
+    module: 'FI',
     subModule: 'GL',
     label: 'Document Splitting / New GL',
     must: [
@@ -174,7 +174,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
 
   {
     templateKey: 'fico-fx-revaluation',
-    module: 'FICO',
+    module: 'FI',
     subModule: 'GL',
     label: 'FX Revaluation / Currency',
     must: [
@@ -185,7 +185,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
 
   {
     templateKey: 'fico-intercompany',
-    module: 'FICO',
+    module: 'FI',
     subModule: 'GL',
     label: 'Intercompany Posting',
     must: [
@@ -197,7 +197,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
 
   {
     templateKey: 'fico-dunning',
-    module: 'FICO',
+    module: 'FI',
     subModule: 'AR',
     label: 'Dunning Run',
     must: [
@@ -208,7 +208,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
 
   {
     templateKey: 'fico-ar-incoming-payment',
-    module: 'FICO',
+    module: 'FI',
     subModule: 'AR',
     label: 'AR Incoming Payment / Clearing',
     must: [
@@ -219,8 +219,8 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
 
   {
     templateKey: 'fico-product-costing',
-    module: 'FICO',
-    subModule: 'CO',
+    module: 'CO',
+    subModule: 'PC',
     label: 'Product Costing Run',
     must: [
       ['product costing', 'ck11n', 'ck40n', 'cost estimate', 'standard cost', 'costing run'],

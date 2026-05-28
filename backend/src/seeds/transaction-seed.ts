@@ -15,7 +15,7 @@
  *   PASS B — Populates TimeEntry rows on RESOLVED / CLOSED records:
  *     - Idempotent: deletes existing TimeEntry rows scoped to this customer's
  *       records first
- *     - 1-3 entries per record, ~1.5h avg per FICO/MM/SD ticket, ~2.5h for PP,
+ *     - 1-3 entries per record, ~1.5h avg per FI/CO/MM/SD ticket, ~2.5h for PP,
  *       ±30% variance
  *     - workDate randomised between createdAt and resolvedAt
  *     - status=APPROVED, approvedById=SUPER_ADMIN, approvedAt=resolvedAt+1d
