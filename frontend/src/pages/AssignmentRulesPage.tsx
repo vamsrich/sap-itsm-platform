@@ -4,8 +4,10 @@ import { assignmentRulesApi, customersApi, sapModulesApi } from '../api/services
 import { getErrorMessage } from '../api/client';
 import { PageHeader, Button } from '../components/ui/Forms';
 import { Modal } from '../components/ui/Modal';
-import { Plus, Pencil, Trash2, Zap, Users, ToggleRight, ToggleLeft } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, ToggleRight, ToggleLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ScoringWeightsPanel from '../components/ScoringWeightsPanel';
+import { useAuthStore } from '../store/auth.store';
 
 const MODE_COLORS: Record<string, string> = {
   AUTO_ASSIGN: 'bg-green-100 text-green-700',
@@ -52,6 +54,8 @@ const blank = {
 
 export default function AssignmentRulesPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const canConfigureScoring = user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN';
   const [showModal, setShowModal] = useState(false);
   const [editRule, setEditRule] = useState<any>(null);
   const [form, setForm] = useState(blank);
@@ -153,38 +157,11 @@ export default function AssignmentRulesPage() {
     <div className="p-6 max-w-screen-xl mx-auto space-y-5">
       <PageHeader title="Smart Agent Assignment" subtitle="Configure automatic agent assignment rules per customer" />
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-        <p className="text-sm font-semibold text-blue-700 mb-1">Smart Agent Assignment Engine</p>
-        <p className="text-xs text-blue-600">Agents are scored on a 100-point scale based on 5 factors:</p>
-        <div className="grid grid-cols-5 gap-2 mt-2">
-          <div className="bg-white rounded-lg px-2 py-1.5 border border-blue-100 text-center">
-            <p className="text-lg font-bold text-blue-700">30</p>
-            <p className="text-[10px] text-blue-500">Module Match</p>
-          </div>
-          <div className="bg-white rounded-lg px-2 py-1.5 border border-blue-100 text-center">
-            <p className="text-lg font-bold text-blue-700">25</p>
-            <p className="text-[10px] text-blue-500">Level Match</p>
-          </div>
-          <div className="bg-white rounded-lg px-2 py-1.5 border border-blue-100 text-center">
-            <p className="text-lg font-bold text-blue-700">20</p>
-            <p className="text-[10px] text-blue-500">Sub-Module</p>
-          </div>
-          <div className="bg-white rounded-lg px-2 py-1.5 border border-blue-100 text-center">
-            <p className="text-lg font-bold text-blue-700">15</p>
-            <p className="text-[10px] text-blue-500">Workload</p>
-          </div>
-          <div className="bg-white rounded-lg px-2 py-1.5 border border-blue-100 text-center">
-            <p className="text-lg font-bold text-blue-700">10</p>
-            <p className="text-[10px] text-blue-500">Availability</p>
-          </div>
-        </div>
-      </div>
-
       <div className="flex items-center gap-3">
         <select
           value={filterCustomer}
           onChange={(e) => setFilterCustomer(e.target.value)}
-          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white min-w-[200px]"
+          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white min-w-[240px]"
         >
           <option value="">All Customers</option>
           {customers.map((c) => (
@@ -199,6 +176,21 @@ export default function AssignmentRulesPage() {
           </Button>
         </div>
       </div>
+
+      {canConfigureScoring && filterCustomer ? (
+        <ScoringWeightsPanel
+          customerId={filterCustomer}
+          customerName={customers.find((c) => c.id === filterCustomer)?.companyName || 'Customer'}
+        />
+      ) : (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+          <p className="text-sm font-semibold text-blue-700 mb-1">Smart Agent Assignment Engine</p>
+          <p className="text-xs text-blue-600">
+            Agents are scored on a 100-point scale across 5 factors. Defaults: Module 30, Level 25, Sub-Module 20, Workload 15, Availability 10.
+            {canConfigureScoring && ' Select a customer above to edit their scoring weights.'}
+          </p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="text-center py-12 text-gray-400">Loading…</div>

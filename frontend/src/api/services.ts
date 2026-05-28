@@ -185,6 +185,13 @@ export const assignmentRulesApi = {
   recommend: (data: object) => apiClient.post('/assignment-rules/recommend', data),
 };
 
+export const scoringConfigsApi = {
+  list: (customerId: string) => apiClient.get('/scoring-configs', { params: { customerId } }),
+  create: (data: object) => apiClient.post('/scoring-configs', data),
+  update: (id: string, data: object) => apiClient.patch(`/scoring-configs/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/scoring-configs/${id}`),
+};
+
 // ── Dashboard API ─────────────────────────────────────────────────────────────
 export const dashboardApi = {
   overview: () => apiClient.get('/dashboard'),

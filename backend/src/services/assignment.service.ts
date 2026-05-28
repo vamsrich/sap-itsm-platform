@@ -2,6 +2,22 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+export interface ScoringWeights {
+  moduleWeight: number;
+  subModuleWeight: number;
+  levelWeight: number;
+  workloadWeight: number;
+  availabilityWeight: number;
+}
+
+export const DEFAULT_SCORING_WEIGHTS: ScoringWeights = {
+  moduleWeight: 30,
+  subModuleWeight: 20,
+  levelWeight: 25,
+  workloadWeight: 15,
+  availabilityWeight: 10,
+};
+
 interface AgentScore {
   agentId: string;
   agentName: string;
@@ -17,13 +33,36 @@ interface AgentScore {
   status: string;
 }
 
-// Level priority mapping: P1→L4/L3 best, P4→L1/L2 best
-const LEVEL_PRIORITY_SCORES: Record<string, Record<string, number>> = {
-  P1: { L4: 25, L3: 20, L2: 10, L1: 5 },
-  P2: { L4: 20, L3: 25, L2: 15, L1: 5 },
-  P3: { L4: 5, L3: 10, L2: 25, L1: 20 },
-  P4: { L4: 5, L3: 5, L2: 20, L1: 25 },
+// Level priority mapping: P1→L4/L3 best, P4→L1/L2 best.
+// Returns a 0..1 multiplier applied to the configured levelWeight.
+const LEVEL_PRIORITY_MULTIPLIERS: Record<string, Record<string, number>> = {
+  P1: { L4: 1.0, L3: 0.8, L2: 0.4, L1: 0.2 },
+  P2: { L4: 0.8, L3: 1.0, L2: 0.6, L1: 0.2 },
+  P3: { L4: 0.2, L3: 0.4, L2: 1.0, L1: 0.8 },
+  P4: { L4: 0.2, L3: 0.2, L2: 0.8, L1: 1.0 },
 };
+
+// Resolve scoring weights for (customerId, ticketPriority).
+// Order: (customer, priority) → (customer, 'ALL') → hardcoded fallback.
+export async function resolveScoringConfig(
+  customerId: string,
+  ticketPriority: string,
+): Promise<ScoringWeights> {
+  const rows = await prisma.assignmentScoringConfig.findMany({
+    where: { customerId, priority: { in: [ticketPriority, 'ALL'] } },
+  });
+  const specific = rows.find((r) => r.priority === ticketPriority);
+  const fallback = rows.find((r) => r.priority === 'ALL');
+  const chosen = specific || fallback;
+  if (!chosen) return DEFAULT_SCORING_WEIGHTS;
+  return {
+    moduleWeight: chosen.moduleWeight,
+    subModuleWeight: chosen.subModuleWeight,
+    levelWeight: chosen.levelWeight,
+    workloadWeight: chosen.workloadWeight,
+    availabilityWeight: chosen.availabilityWeight,
+  };
+}
 
 export async function findMatchingRule(params: {
   tenantId: string;
@@ -69,8 +108,10 @@ export async function scoreAgents(params: {
   moduleId?: string | null;
   subModuleId?: string | null;
   preferredLevel?: string | null;
+  weights?: ScoringWeights;
 }): Promise<AgentScore[]> {
   const { tenantId, customerId, priority, moduleId, subModuleId, preferredLevel } = params;
+  const weights = params.weights ?? (await resolveScoringConfig(customerId, priority));
 
   // Get agents assigned to this customer
   const customerAgents = await prisma.customerAgent.findMany({
@@ -102,45 +143,46 @@ export async function scoreAgents(params: {
   });
 
   const scores: AgentScore[] = agents.map((agent) => {
-    // Module match (30 pts)
+    // Module match — full weight if agent specializes in the ticket's module.
     let moduleMatch = 0;
     if (moduleId) {
       const spec = agent.specializations.find((s) => s.moduleId === moduleId);
-      if (spec) moduleMatch = 30;
+      if (spec) moduleMatch = weights.moduleWeight;
     }
 
-    // Sub-module match (20 pts)
+    // Sub-module match — full weight if agent specializes in the sub-module.
     let subModuleMatch = 0;
     if (moduleId && subModuleId) {
       const spec = agent.specializations.find((s) => s.moduleId === moduleId);
-      if (spec && spec.subModuleIds.includes(subModuleId)) subModuleMatch = 20;
+      if (spec && spec.subModuleIds.includes(subModuleId)) subModuleMatch = weights.subModuleWeight;
     }
 
-    // Level score (25 pts) — higher priority for level match
-    let levelScore = 0;
+    // Level score — fractional weight based on level-vs-priority/preference fit.
+    let levelMultiplier: number;
     if (preferredLevel) {
-      // Explicit preferred level from rule
-      levelScore =
-        agent.level === preferredLevel
-          ? 25
-          : Math.abs(
-                ['L1', 'L2', 'L3', 'L4'].indexOf(agent.level) - ['L1', 'L2', 'L3', 'L4'].indexOf(preferredLevel),
-              ) <= 1
-            ? 15
-            : 5;
+      const distance = Math.abs(
+        ['L1', 'L2', 'L3', 'L4'].indexOf(agent.level) - ['L1', 'L2', 'L3', 'L4'].indexOf(preferredLevel),
+      );
+      levelMultiplier = distance === 0 ? 1.0 : distance === 1 ? 0.6 : 0.2;
     } else {
-      // Auto: use priority-based scoring
-      levelScore = LEVEL_PRIORITY_SCORES[priority]?.[agent.level] || 10;
+      levelMultiplier = LEVEL_PRIORITY_MULTIPLIERS[priority]?.[agent.level] ?? 0.4;
     }
+    const levelScore = Math.round(weights.levelWeight * levelMultiplier);
 
-    // Workload score (15 pts)
+    // Workload — full weight at 0% util, 0 at >=100% util.
     const openTickets = (agent._count as any).assignments || 0;
     const maxC = agent.maxConcurrent || 5;
     const utilizationPct = openTickets / maxC;
-    const workloadScore = utilizationPct >= 1.0 ? 0 : Math.round((1 - utilizationPct) * 15);
+    const workloadScore =
+      utilizationPct >= 1.0 ? 0 : Math.round((1 - utilizationPct) * weights.workloadWeight);
 
-    // Availability score (10 pts)
-    const availabilityScore = agent.status === 'AVAILABLE' ? 10 : agent.status === 'BUSY' ? 5 : 0;
+    // Availability — full weight when AVAILABLE, half when BUSY, 0 OFFLINE.
+    const availabilityScore =
+      agent.status === 'AVAILABLE'
+        ? weights.availabilityWeight
+        : agent.status === 'BUSY'
+          ? Math.round(weights.availabilityWeight / 2)
+          : 0;
 
     const totalScore = moduleMatch + subModuleMatch + levelScore + workloadScore + availabilityScore;
 

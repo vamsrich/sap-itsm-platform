@@ -154,6 +154,37 @@ async function bootstrap() {
       logger.warn('[issue-templates] bootstrap skipped:', e?.message || e);
     }
 
+    // Bootstrap default agent-scoring weights per customer (idempotent).
+    // Seeds the priority='ALL' row with 30/20/25/15/10 for any customer
+    // that doesn't already have one. Existing rows (including SA-edited
+    // weights and per-priority overrides) are left untouched.
+    try {
+      const customers = await prisma.customer.findMany({ select: { id: true, tenantId: true } });
+      const existing = await prisma.assignmentScoringConfig.findMany({
+        where: { priority: 'ALL' },
+        select: { customerId: true },
+      });
+      const haveDefault = new Set(existing.map((r) => r.customerId));
+      const missing = customers.filter((c) => !haveDefault.has(c.id));
+      if (missing.length > 0) {
+        await prisma.assignmentScoringConfig.createMany({
+          data: missing.map((c) => ({
+            tenantId: c.tenantId,
+            customerId: c.id,
+            priority: 'ALL',
+            moduleWeight: 30,
+            subModuleWeight: 20,
+            levelWeight: 25,
+            workloadWeight: 15,
+            availabilityWeight: 10,
+          })),
+        });
+      }
+      logger.info(`[scoring-configs] bootstrap: ${missing.length} customer(s) seeded, ${haveDefault.size} already configured`);
+    } catch (e: any) {
+      logger.warn('[scoring-configs] bootstrap skipped:', e?.message || e);
+    }
+
     await redis.ping();
     logger.info('✅ Redis connected');
 

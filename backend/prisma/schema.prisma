@@ -187,6 +187,7 @@ model Tenant {
   modules            ModuleMaster[]
   subModules         SubModuleMaster[]
   assignmentRules    AssignmentRule[]
+  assignmentScoringConfigs AssignmentScoringConfig[]
   holidayCalendars HolidayCalendar[]
   auditLogs        AuditLog[]
   notificationRules NotificationRule[]
@@ -376,6 +377,31 @@ model AssignmentRule {
   @@map("assignment_rules")
 }
 
+// Per-customer agent-scoring weights. One mandatory "ALL" row per customer
+// (the customer default) plus optional per-priority overrides (P1-P4).
+// scoreAgents() resolves: (customerId, ticket.priority) → (customerId, 'ALL')
+// → hardcoded fallback. All five weights must sum to exactly 100.
+model AssignmentScoringConfig {
+  id                 String   @id @default(uuid())
+  tenantId           String   @map("tenant_id")
+  customerId         String   @map("customer_id")
+  priority           String                                  // 'ALL' | 'P1' | 'P2' | 'P3' | 'P4'
+  moduleWeight       Int      @map("module_weight")
+  subModuleWeight    Int      @map("sub_module_weight")
+  levelWeight        Int      @map("level_weight")
+  workloadWeight     Int      @map("workload_weight")
+  availabilityWeight Int      @map("availability_weight")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, priority])
+  @@index([tenantId])
+  @@map("assignment_scoring_configs")
+}
+
 // ── CUSTOMERS ────────────────────────────────────────────────
 
 model Customer {
@@ -410,6 +436,7 @@ model Customer {
   records         ITSMRecord[]
   configurationItems ConfigurationItem[]
   assignmentRules    AssignmentRule[]
+  assignmentScoringConfigs AssignmentScoringConfig[]
   systems         CustomerSystem[]
 
   @@index([tenantId])

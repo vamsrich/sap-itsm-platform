@@ -26,6 +26,7 @@ import notificationRuleRoutes from './services/notifications/notification.routes
 import notificationInboxRoutes from './services/notifications/inbox.routes';
 import sapModuleRoutes from './api/routes/sapModule.routes';
 import assignmentRuleRoutes from './api/routes/assignmentRule.routes';
+import scoringConfigRoutes from './api/routes/scoringConfig.routes';
 import analyticsRoutes from './api/routes/analytics.routes';
 import issueTemplatesRoutes from './api/routes/issue-templates.routes';
 import slaPolicyRoutes from './api/routes/slaPolicy.routes';
@@ -121,6 +122,7 @@ app.use(`${API}/notification-rules`, notificationRuleRoutes);
 app.use(`${API}/notifications/inbox`, notificationInboxRoutes);
 app.use(`${API}/sap-modules`, sapModuleRoutes);
 app.use(`${API}/assignment-rules`, assignmentRuleRoutes);
+app.use(`${API}/scoring-configs`, scoringConfigRoutes);
 app.use(`${API}/analytics`, analyticsRoutes);
 app.use(`${API}/admin/issue-templates`, issueTemplatesRoutes);
 app.use(`${API}/sla-policies`, slaPolicyRoutes);

@@ -212,6 +212,20 @@ router.post(
           data: { customerId: customer.id },
         });
       }
+      // Seed the customer's default agent-scoring weights (priority='ALL', 30/20/25/15/10).
+      // Per-priority overrides are optional and created via the scoring-configs CRUD.
+      await prisma.assignmentScoringConfig.create({
+        data: {
+          tenantId: req.user!.tenantId,
+          customerId: customer.id,
+          priority: 'ALL',
+          moduleWeight: 30,
+          subModuleWeight: 20,
+          levelWeight: 25,
+          workloadWeight: 15,
+          availabilityWeight: 10,
+        },
+      });
       await auditLog({
         ...auditFromRequest(req),
         action: 'CREATE',
