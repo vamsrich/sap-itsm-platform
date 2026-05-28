@@ -481,7 +481,7 @@ export default function RecordDetailPage() {
               <div>
                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</label>
                 <div className="mt-1.5">
-                  {editMode && isAdminEditor ? (
+                  {editMode ? (
                     <select
                       value={editedStatus}
                       onChange={(e) => setEditedStatus(e.target.value)}

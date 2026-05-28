@@ -209,7 +209,7 @@ router.post(
 // USER can only update tickets they created, only title/description, and only
 // when the ticket is in an open status. Admin roles have no such restriction.
 // ─────────────────────────────────────────────────────────────
-const USER_EDITABLE_FIELDS = new Set(['title', 'description']);
+const USER_EDITABLE_FIELDS = new Set(['title', 'description', 'status']);
 const USER_LOCKED_STATUSES = ['RESOLVED', 'CLOSED', 'CANCELLED'];
 
 router.patch(
