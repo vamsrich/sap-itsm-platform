@@ -93,6 +93,13 @@ export default function NewRecordPage() {
 
   const agents: any[] = agentsData || [];
 
+  // Filter to agents who specialize in the selected module so users don't
+  // pick a finance person for a procurement ticket. No module selected yet
+  // → no filter (let users see all eligible customer agents).
+  const eligibleAgents = form.moduleId
+    ? agents.filter((a: any) => (a.specializations || []).some((s: any) => s.moduleId === form.moduleId))
+    : agents;
+
   const set = (key: string, val: string) => {
     setForm((f) => {
       const next = { ...f, [key]: val };
@@ -321,15 +328,19 @@ export default function NewRecordPage() {
                     className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   >
                     <option value="">— Unassigned —</option>
-                    {agents.map((a: any) => (
+                    {eligibleAgents.map((a: any) => (
                       <option key={a.id} value={a.id}>
                         {a.user?.firstName} {a.user?.lastName} ({a.level})
                       </option>
                     ))}
                   </select>
-                  {agents.length === 0 && (
+                  {agents.length === 0 ? (
                     <p className="text-xs text-amber-600 mt-1 italic">No agents configured yet</p>
-                  )}
+                  ) : form.moduleId && eligibleAgents.length === 0 ? (
+                    <p className="text-xs text-amber-600 mt-1 italic">
+                      No agents specialize in the selected module — assign specialization first
+                    </p>
+                  ) : null}
                 </div>
                 <Input
                   label="Tags (comma-separated)"

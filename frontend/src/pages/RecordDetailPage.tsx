@@ -525,11 +525,31 @@ export default function RecordDetailPage() {
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     >
                       <option value="">— Unassigned —</option>
-                      {agents.map((a: any) => (
-                        <option key={a.id} value={a.id}>
-                          {a.user?.firstName} {a.user?.lastName} ({a.level})
-                        </option>
-                      ))}
+                      {(() => {
+                        // Filter to specialists for the ticket's module. Keep
+                        // the currently-assigned agent visible even if they
+                        // aren't a specialist (legacy assignment).
+                        const moduleId = record.module?.id;
+                        const filtered = moduleId
+                          ? agents.filter((a: any) =>
+                              (a.specializations || []).some((s: any) => s.moduleId === moduleId),
+                            )
+                          : agents;
+                        const currentId = record.assignedAgent?.id;
+                        const showCurrent =
+                          currentId &&
+                          !filtered.some((a: any) => a.id === currentId) &&
+                          agents.find((a: any) => a.id === currentId);
+                        const list = showCurrent
+                          ? [agents.find((a: any) => a.id === currentId), ...filtered]
+                          : filtered;
+                        return list.map((a: any) => (
+                          <option key={a.id} value={a.id}>
+                            {a.user?.firstName} {a.user?.lastName} ({a.level})
+                            {showCurrent && a.id === currentId ? ' — currently assigned' : ''}
+                          </option>
+                        ));
+                      })()}
                     </select>
                   ) : record.assignedAgent ? (
                     <div className="flex items-center gap-2">
