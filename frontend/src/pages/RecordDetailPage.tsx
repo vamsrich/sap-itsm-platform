@@ -59,7 +59,12 @@ export default function RecordDetailPage() {
   if (isLoading) return <LoadingSpinner fullscreen label="Loading ticket…" />;
   if (!record) return <div className="p-8 text-center text-gray-400">Ticket not found.</div>;
 
-  const canEdit = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'AGENT', 'PROJECT_MANAGER'].includes(user?.role || '');
+  const isAdminEditor = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'AGENT', 'PROJECT_MANAGER'].includes(user?.role || '');
+  const isCreator = record.createdBy?.id === user?.id;
+  const isLockedStatus = ['RESOLVED', 'CLOSED', 'CANCELLED'].includes(record.status);
+  // Admins can edit anything anytime. USER (creator) can only edit their own
+  // open tickets — and only title/description (see isAdminEditor checks below).
+  const canEdit = isAdminEditor || (isCreator && !isLockedStatus);
   const canAssign = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER'].includes(user?.role || '');
   const canSeeInternal = ['SUPER_ADMIN', 'AGENT'].includes(user?.role || '');
   const isAgent = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'AGENT', 'PROJECT_MANAGER'].includes(user?.role || '');
@@ -476,7 +481,7 @@ export default function RecordDetailPage() {
               <div>
                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</label>
                 <div className="mt-1.5">
-                  {editMode ? (
+                  {editMode && isAdminEditor ? (
                     <select
                       value={editedStatus}
                       onChange={(e) => setEditedStatus(e.target.value)}
@@ -497,7 +502,7 @@ export default function RecordDetailPage() {
               <div>
                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Priority</label>
                 <div className="mt-1.5">
-                  {editMode ? (
+                  {editMode && isAdminEditor ? (
                     <select
                       value={editedPriority}
                       onChange={(e) => setEditedPriority(e.target.value)}

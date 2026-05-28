@@ -205,14 +205,45 @@ router.post(
 );
 
 // ─────────────────────────────────────────────────────────────
-// PATCH /records/:id — update (USER blocked)
+// PATCH /records/:id — update
+// USER can only update tickets they created, only title/description, and only
+// when the ticket is in an open status. Admin roles have no such restriction.
 // ─────────────────────────────────────────────────────────────
+const USER_EDITABLE_FIELDS = new Set(['title', 'description']);
+const USER_LOCKED_STATUSES = ['RESOLVED', 'CLOSED', 'CANCELLED'];
+
 router.patch(
   '/:id',
-  enforceRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'AGENT', 'PROJECT_MANAGER'),
+  enforceRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'AGENT', 'PROJECT_MANAGER', 'USER'),
   validate(updateRecordSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (req.user!.role === 'USER') {
+        const existing = await prisma.iTSMRecord.findFirst({
+          where: { id: req.params.id, tenantId: req.user!.tenantId },
+          select: { createdById: true, status: true },
+        });
+        if (!existing) {
+          res.status(404).json({ success: false, error: 'Record not found' });
+          return;
+        }
+        if (existing.createdById !== req.user!.sub) {
+          res.status(403).json({ success: false, error: 'You can only edit tickets you created' });
+          return;
+        }
+        if (USER_LOCKED_STATUSES.includes(existing.status)) {
+          res.status(403).json({ success: false, error: 'Cannot edit a ticket once it is resolved or closed' });
+          return;
+        }
+        const disallowed = Object.keys(req.body).filter((k) => !USER_EDITABLE_FIELDS.has(k));
+        if (disallowed.length > 0) {
+          res.status(403).json({
+            success: false,
+            error: `Only title and description are editable for this role (received: ${disallowed.join(', ')})`,
+          });
+          return;
+        }
+      }
       const record = await updateRecord(req.params.id, req.user!.tenantId, req.user!.sub, req.body);
       res.json({ success: true, record });
     } catch (err) {
