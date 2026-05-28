@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Search, Filter, Plus, X, Download } from 'lucide-react';
 import { useRecords } from '../hooks/useApi';
 import { DataTable, Column } from '../components/ui/DataTable';
 import { PriorityBadge, StatusBadge, TypeBadge, SLABadge } from '../components/ui/Badges';
 import { PageHeader, Button } from '../components/ui/Forms';
 import { formatDistanceToNow } from 'date-fns';
-import { RecordFilters } from '../api/services';
+import { RecordFilters, sapModulesApi, agentsApi, usersApi } from '../api/services';
+import { useAuthStore } from '../store/auth.store';
 
 const STATUS_OPTIONS = ['', 'NEW', 'OPEN', 'IN_PROGRESS', 'PENDING', 'RESOLVED', 'CLOSED', 'CANCELLED'];
 const PRIORITY_OPTIONS = ['', 'P1', 'P2', 'P3', 'P4'];
@@ -14,12 +16,30 @@ const TYPE_OPTIONS = ['', 'INCIDENT', 'REQUEST', 'PROBLEM', 'CHANGE'];
 
 export default function RecordsPage() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const canFilterByPerson = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'PROJECT_MANAGER'].includes(user?.role || '');
 
   const [filters, setFilters] = useState<RecordFilters>({
     page: 1,
     limit: 20,
     sortBy: 'createdAt',
     sortOrder: 'desc',
+  });
+
+  // Lookups for the new filter dropdowns. Cheap (small lists, cached).
+  const { data: modulesList } = useQuery({
+    queryKey: ['records-filter-modules'],
+    queryFn: () => sapModulesApi.active().then((r) => r.data.data || []),
+  });
+  const { data: agentsList } = useQuery({
+    queryKey: ['records-filter-agents'],
+    queryFn: () => agentsApi.list({ agentType: 'AGENT', limit: 200 }).then((r) => r.data.data || r.data.agents || []),
+    enabled: canFilterByPerson,
+  });
+  const { data: endUsersList } = useQuery({
+    queryKey: ['records-filter-end-users'],
+    queryFn: () => usersApi.list({ role: 'USER', limit: 200 }).then((r) => r.data.data || r.data.users || []),
+    enabled: canFilterByPerson,
   });
 
   const handleExportCSV = () => {
@@ -79,7 +99,14 @@ export default function RecordsPage() {
     setSearch('');
   };
 
-  const activeFilterCount = [filters.recordType, filters.status, filters.priority].filter(Boolean).length;
+  const activeFilterCount = [
+    filters.recordType,
+    filters.status,
+    filters.priority,
+    filters.moduleId,
+    filters.assignedAgentId,
+    filters.createdById,
+  ].filter(Boolean).length;
 
   const columns: Column<any>[] = [
     {
@@ -247,21 +274,7 @@ export default function RecordsPage() {
       {showFilters && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Type</label>
-            <select
-              value={filters.recordType || ''}
-              onChange={(e) => setFilter('recordType', e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              {TYPE_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o || 'All Types'}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Status</label>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Ticket Status</label>
             <select
               value={filters.status || ''}
               onChange={(e) => setFilter('status', e.target.value)}
@@ -270,6 +283,20 @@ export default function RecordsPage() {
               {STATUS_OPTIONS.map((o) => (
                 <option key={o} value={o}>
                   {o.replace('_', ' ') || 'All Statuses'}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Ticket Type</label>
+            <select
+              value={filters.recordType || ''}
+              onChange={(e) => setFilter('recordType', e.target.value)}
+              className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              {TYPE_OPTIONS.map((o) => (
+                <option key={o} value={o}>
+                  {o || 'All Types'}
                 </option>
               ))}
             </select>
@@ -288,6 +315,55 @@ export default function RecordsPage() {
               ))}
             </select>
           </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">SAP Module</label>
+            <select
+              value={filters.moduleId || ''}
+              onChange={(e) => setFilter('moduleId', e.target.value)}
+              className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">All Modules</option>
+              {(modulesList || []).map((m: any) => (
+                <option key={m.id} value={m.id}>
+                  {m.code} — {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {canFilterByPerson && (
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Agent</label>
+              <select
+                value={filters.assignedAgentId || ''}
+                onChange={(e) => setFilter('assignedAgentId', e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">All Agents</option>
+                {(agentsList || []).map((a: any) => (
+                  <option key={a.id} value={a.id}>
+                    {a.user?.firstName} {a.user?.lastName} ({a.level})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {canFilterByPerson && (
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">End User</label>
+              <select
+                value={filters.createdById || ''}
+                onChange={(e) => setFilter('createdById', e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">All End Users</option>
+                {(endUsersList || []).map((u: any) => (
+                  <option key={u.id} value={u.id}>
+                    {u.firstName} {u.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1 block">Sort By</label>
             <select

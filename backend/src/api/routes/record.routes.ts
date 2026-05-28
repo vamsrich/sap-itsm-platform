@@ -91,6 +91,12 @@ router.get('/', validate(listRecordsSchema), async (req: Request, res: Response,
       assignedAgentId = q.assignedAgentId;
     }
 
+    // USER role's createdById is set by their own scope above. Other roles
+    // can opt-in to filter by an end-user id via the query param.
+    if (role !== 'USER' && q.createdById) {
+      createdById = q.createdById;
+    }
+
     const result = await listRecords({
       tenantId: req.user!.tenantId,
       page: Number(q.page) || 1,
@@ -102,6 +108,7 @@ router.get('/', validate(listRecordsSchema), async (req: Request, res: Response,
       customerIdIn: customerIdIn,
       createdById: createdById,
       assignedAgentId: assignedAgentId,
+      moduleId: q.moduleId,
       search: q.search,
       sortBy: q.sortBy,
       sortOrder: q.sortOrder,

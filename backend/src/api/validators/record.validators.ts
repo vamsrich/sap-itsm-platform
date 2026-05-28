@@ -48,6 +48,8 @@ export const listRecordsSchema = z.object({
     priority: z.enum(['P1', 'P2', 'P3', 'P4']).optional(),
     assignedAgentId: z.string().uuid().optional(),
     customerId: z.string().uuid().optional(),
+    createdById: z.string().uuid().optional(),
+    moduleId: z.string().uuid().optional(),
     search: z.string().max(200).optional(),
     sortBy: z.enum(['createdAt', 'updatedAt', 'priority', 'status', 'recordNumber']).default('createdAt'),
     sortOrder: z.enum(['asc', 'desc']).default('desc'),

@@ -19,6 +19,8 @@ export interface RecordFilters {
   priority?: string;
   assignedAgentId?: string;
   customerId?: string;
+  createdById?: string;
+  moduleId?: string;
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
