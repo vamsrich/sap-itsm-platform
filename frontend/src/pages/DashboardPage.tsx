@@ -272,7 +272,7 @@ function PMDashboard() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { data: d, isLoading } = useQuery({
-    queryKey: ['dashboard-pm'],
+    queryKey: ['dashboard-pm', user?.id],
     queryFn: () => dashboardApi.pm().then((r) => r.data),
   });
   if (isLoading) return <LoadingSpinner fullscreen label="Loading operational dashboard…" />;
@@ -481,7 +481,7 @@ function CustomerDashboard() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { data: d, isLoading } = useQuery({
-    queryKey: ['dashboard-customer'],
+    queryKey: ['dashboard-customer', user?.id],
     queryFn: () => dashboardApi.customer().then((r) => r.data),
   });
   if (isLoading) return <LoadingSpinner fullscreen label="Loading dashboard…" />;
@@ -663,7 +663,7 @@ function AgentDashboard() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { data: d, isLoading } = useQuery({
-    queryKey: ['dashboard-agent'],
+    queryKey: ['dashboard-agent', user?.id],
     queryFn: () => dashboardApi.agent().then((r) => r.data),
   });
   if (isLoading) return <LoadingSpinner fullscreen label="Loading workload…" />;
@@ -824,7 +824,7 @@ function UserDashboard() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { data: d, isLoading } = useQuery({
-    queryKey: ['dashboard-user'],
+    queryKey: ['dashboard-user', user?.id],
     queryFn: () => dashboardApi.user().then((r) => r.data),
   });
   if (isLoading) return <LoadingSpinner fullscreen label="Loading your tickets…" />;

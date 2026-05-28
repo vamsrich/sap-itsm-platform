@@ -210,6 +210,7 @@ export default function AppLayout() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const { user, refreshToken, logout } = useAuthStore();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const role = user?.role || '';
 
@@ -230,6 +231,9 @@ export default function AppLayout() {
     try {
       if (refreshToken) await authApi.logout(refreshToken);
     } catch {}
+    // Drop React Query cache so the next sign-in doesn't see stale data
+    // from the previous user.
+    queryClient.clear();
     logout();
     navigate('/login');
     toast.success('Logged out');
