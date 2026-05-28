@@ -80,13 +80,14 @@ export default function AssignmentRulesPage() {
   const customers: any[] = customersData || [];
   const modules: any[] = modulesData || [];
 
-  // Auto-select the first customer once the list loads so the scoring
-  // grid is visible immediately (no manual selection needed).
+  // COMPANY_ADMIN can only see their own customer (backend-scoped), so
+  // auto-select it for them — manual picking is meaningless with one row.
+  // SUPER_ADMIN must pick explicitly and sees the defaults banner first.
   useEffect(() => {
-    if (!filterCustomer && customers.length > 0) {
+    if (!filterCustomer && user?.role === 'COMPANY_ADMIN' && customers.length > 0) {
       setFilterCustomer(customers[0].id);
     }
-  }, [customers, filterCustomer]);
+  }, [customers, filterCustomer, user?.role]);
   const ic =
     'w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white';
 
