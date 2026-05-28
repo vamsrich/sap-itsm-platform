@@ -243,6 +243,19 @@ export default function RecordsPage() {
         </div>
 
         <div className="flex gap-2">
+          <select
+            value={`${filters.sortBy}_${filters.sortOrder}`}
+            onChange={(e) => {
+              const [by, order] = e.target.value.split('_');
+              setFilters((f) => ({ ...f, sortBy: by, sortOrder: order as any, page: 1 }));
+            }}
+            className="text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="createdAt_desc">Newest First</option>
+            <option value="createdAt_asc">Oldest First</option>
+            <option value="priority_asc">Priority (High First)</option>
+            <option value="updatedAt_desc">Recently Updated</option>
+          </select>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm border rounded-xl transition-colors ${
@@ -270,116 +283,82 @@ export default function RecordsPage() {
         </div>
       </div>
 
-      {/* Filter panel */}
+      {/* Filter panel — single horizontal row, compact controls */}
       {showFilters && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-          <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Ticket Status</label>
-            <select
-              value={filters.status || ''}
-              onChange={(e) => setFilter('status', e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              {STATUS_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o.replace('_', ' ') || 'All Statuses'}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Ticket Type</label>
-            <select
-              value={filters.recordType || ''}
-              onChange={(e) => setFilter('recordType', e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              {TYPE_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o || 'All Types'}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Priority</label>
-            <select
-              value={filters.priority || ''}
-              onChange={(e) => setFilter('priority', e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              {PRIORITY_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o || 'All Priorities'}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">SAP Module</label>
-            <select
-              value={filters.moduleId || ''}
-              onChange={(e) => setFilter('moduleId', e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">All Modules</option>
-              {(modulesList || []).map((m: any) => (
-                <option key={m.id} value={m.id}>
-                  {m.code} — {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200">
+          <select
+            value={filters.status || ''}
+            onChange={(e) => setFilter('status', e.target.value)}
+            className="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[160px]"
+          >
+            {STATUS_OPTIONS.map((o) => (
+              <option key={o} value={o}>
+                {o.replace('_', ' ') || 'All Statuses'}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.recordType || ''}
+            onChange={(e) => setFilter('recordType', e.target.value)}
+            className="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[140px]"
+          >
+            {TYPE_OPTIONS.map((o) => (
+              <option key={o} value={o}>
+                {o || 'All Types'}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.priority || ''}
+            onChange={(e) => setFilter('priority', e.target.value)}
+            className="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[130px]"
+          >
+            {PRIORITY_OPTIONS.map((o) => (
+              <option key={o} value={o}>
+                {o || 'All Priorities'}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.moduleId || ''}
+            onChange={(e) => setFilter('moduleId', e.target.value)}
+            className="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[160px]"
+          >
+            <option value="">All Modules</option>
+            {(modulesList || []).map((m: any) => (
+              <option key={m.id} value={m.id}>
+                {m.code} — {m.name}
+              </option>
+            ))}
+          </select>
           {canFilterByPerson && (
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Agent</label>
-              <select
-                value={filters.assignedAgentId || ''}
-                onChange={(e) => setFilter('assignedAgentId', e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="">All Agents</option>
-                {(agentsList || []).map((a: any) => (
-                  <option key={a.id} value={a.id}>
-                    {a.user?.firstName} {a.user?.lastName} ({a.level})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={filters.assignedAgentId || ''}
+              onChange={(e) => setFilter('assignedAgentId', e.target.value)}
+              className="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[180px]"
+            >
+              <option value="">All Agents</option>
+              {(agentsList || []).map((a: any) => (
+                <option key={a.id} value={a.id}>
+                  {a.user?.firstName} {a.user?.lastName} ({a.level})
+                </option>
+              ))}
+            </select>
           )}
           {canFilterByPerson && (
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">End User</label>
-              <select
-                value={filters.createdById || ''}
-                onChange={(e) => setFilter('createdById', e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="">All End Users</option>
-                {(endUsersList || []).map((u: any) => (
-                  <option key={u.id} value={u.id}>
-                    {u.firstName} {u.lastName}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Sort By</label>
             <select
-              value={`${filters.sortBy}_${filters.sortOrder}`}
-              onChange={(e) => {
-                const [by, order] = e.target.value.split('_');
-                setFilters((f) => ({ ...f, sortBy: by, sortOrder: order as any, page: 1 }));
-              }}
-              className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              value={filters.createdById || ''}
+              onChange={(e) => setFilter('createdById', e.target.value)}
+              className="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[180px]"
             >
-              <option value="createdAt_desc">Newest First</option>
-              <option value="createdAt_asc">Oldest First</option>
-              <option value="priority_asc">Priority (High First)</option>
-              <option value="updatedAt_desc">Recently Updated</option>
+              <option value="">All End Users</option>
+              {(endUsersList || []).map((u: any) => (
+                <option key={u.id} value={u.id}>
+                  {u.firstName} {u.lastName}
+                </option>
+              ))}
             </select>
-          </div>
+          )}
         </div>
       )}
 
