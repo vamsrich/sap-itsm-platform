@@ -286,6 +286,10 @@ export async function createRecord(input: CreateRecordInput) {
     newValues: { recordNumber, recordType: input.recordType, priority: input.priority },
   });
 
+  // New ticket must show up in dashboard counts and "recent tickets" lists
+  // immediately — drop cached aggregates.
+  await cache.delPattern('dash*');
+
   // Notify via notification rules (creates in-app + queues email)
   await notify({
     event: 'TICKET_CREATED',
@@ -476,6 +480,10 @@ export async function updateRecord(
   });
 
   await cache.del(`record:${id}`);
+  // Status/priority/assignment changes affect every dashboard's aggregates,
+  // so drop the role-keyed dashboard caches (`dashboard:*` and `dash:*`).
+  // 120s TTL is too long to wait for stale numbers to refresh.
+  await cache.delPattern('dash*');
 
   const diff = diffObjects(existing as any, { ...existing, ...updates } as any);
   await auditLog({
